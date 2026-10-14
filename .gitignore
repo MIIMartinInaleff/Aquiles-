@@ -1,0 +1,6 @@
+# Nunca subir los Excel ni datos sin cifrar
+*.xlsx
+*.xls
+*.csv
+*.json
+.DS_Store
