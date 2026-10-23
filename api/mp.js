@@ -28,7 +28,7 @@ module.exports = async (req, res) => {
   const tok = process.env.MP_ACCESS_TOKEN;
   if (!tok) return res.status(500).json({ error: "Falta MP_ACCESS_TOKEN" });
   if (!(await usuario(req))) return res.status(401).json({ error: "No autorizado" });
-  const dias = Math.min(Math.max(parseInt(req.query.dias || "7", 10) || 7, 1), 60);
+  const dias = Math.min(Math.max(parseInt(req.query.dias || "7", 10) || 7, 1), 62);
   const desde = new Date(Date.now() - dias * 864e5).toISOString();
   const me = await fetch("https://api.mercadopago.com/users/me", { headers: { Authorization: "Bearer " + tok } });
   if (!me.ok) return res.status(502).json({ error: "Mercado Pago respondió " + me.status });
