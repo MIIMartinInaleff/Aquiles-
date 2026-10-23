@@ -41,11 +41,10 @@ module.exports = async (req, res) => {
     if (!r.ok) return res.status(502).json({ error: "Mercado Pago respondió " + r.status });
     const j = await r.json(), L = j.results || [];
     // entra: cobrado por el gym (las transferencias desde otro banco al CVU figuran como "account_fund" con el gym de pagador)
-    // sale: pagado por el gym a otro (compras, pagos con QR, transferencias a otra cuenta de MP)
-    if (req.query.dbg) return res.json(L.filter((p) => p.operation_type === req.query.dbg).slice(0, 2).map((p) => ({ yo, collector: p.collector_id, payer: p.payer, desc: p.description, op: p.operation_type })));
+    // sale: pagado por el gym a otro (compras, pagos con QR, transferencias). MP no manda el cobrador en esos casos.
     L.filter((p) => p.status === "approved").forEach((p) => {
       const entra = p.collector_id == yo && (p.operation_type === "account_fund" || (p.payer || {}).id != yo);
-      const sale = !entra && (p.payer || {}).id == yo && p.collector_id != yo;
+      const sale = !entra && p.collector_id == null;
       if (entra || sale) out.push({ ...pick(p), dir: entra ? "in" : "out" });
     });
     if (L.length < 100) break;
