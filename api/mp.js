@@ -41,7 +41,9 @@ module.exports = async (req, res) => {
     if (!r.ok) return res.status(502).json({ error: "Mercado Pago respondió " + r.status });
     const j = await r.json(), L = j.results || [];
     // solo plata que entra: cobrada por el gym y no pagada por el gym
-    out.push(...L.filter((p) => p.collector_id === yo && (p.payer || {}).id != yo && p.status === "approved").map(pick));
+    // (las transferencias desde otro banco al CVU figuran como "account_fund" con el gym de pagador)
+    out.push(...L.filter((p) => p.status === "approved" && p.collector_id == yo
+      && (p.operation_type === "account_fund" || (p.payer || {}).id != yo)).map(pick));
     if (L.length < 100) break;
   }
   res.json({ desde, pagos: out });
