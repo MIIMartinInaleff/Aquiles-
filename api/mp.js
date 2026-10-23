@@ -40,10 +40,13 @@ module.exports = async (req, res) => {
     const r = await fetch(u, { headers: { Authorization: "Bearer " + tok } });
     if (!r.ok) return res.status(502).json({ error: "Mercado Pago respondió " + r.status });
     const j = await r.json(), L = j.results || [];
-    // solo plata que entra: cobrada por el gym y no pagada por el gym
-    // (las transferencias desde otro banco al CVU figuran como "account_fund" con el gym de pagador)
-    out.push(...L.filter((p) => p.status === "approved" && p.collector_id == yo
-      && (p.operation_type === "account_fund" || (p.payer || {}).id != yo)).map(pick));
+    // entra: cobrado por el gym (las transferencias desde otro banco al CVU figuran como "account_fund" con el gym de pagador)
+    // sale: pagado por el gym a otro (compras, pagos con QR, transferencias a otra cuenta de MP)
+    L.filter((p) => p.status === "approved").forEach((p) => {
+      const entra = p.collector_id == yo && (p.operation_type === "account_fund" || (p.payer || {}).id != yo);
+      const sale = !entra && (p.payer || {}).id == yo && p.collector_id != yo;
+      if (entra || sale) out.push({ ...pick(p), dir: entra ? "in" : "out" });
+    });
     if (L.length < 100) break;
   }
   res.json({ desde, pagos: out });
