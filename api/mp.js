@@ -36,7 +36,7 @@ module.exports = async (req, res) => {
     const r = await fetch(u, { headers: { Authorization: "Bearer " + tok } });
     if (!r.ok) return res.status(502).json({ error: "Mercado Pago respondió " + r.status });
     const j = await r.json(), L = j.results || [];
-    if (req.query.raw === "1") return res.json(L.slice(0, 3));
+    if (req.query.raw) return res.json(L.filter((p) => p.payment_method_id === req.query.raw).slice(0, 2));
     out.push(...L.map(pick));
     if (L.length < 100) break;
   }
