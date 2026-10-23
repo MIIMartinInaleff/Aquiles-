@@ -16,7 +16,8 @@ const pick = (p) => {
   return {
     id: String(p.id), fecha: p.date_approved || p.date_created, monto: p.transaction_amount,
     neto: p.transaction_details && p.transaction_details.net_received_amount,
-    nombre, doc: idn.number || bp.identification && bp.identification.number || null, tdoc: idn.type || null,
+    // en las transferencias desde otro banco (CVU) MP no manda el documento de quien transfiere
+    nombre, doc: p.payment_method_id === "cvu" ? null : idn.number || null,
     banco: bp.long_name || null, tipo: p.payment_type_id, metodo: p.payment_method_id, op: p.operation_type,
     desc: p.description || null, estado: p.status,
   };
@@ -29,6 +30,9 @@ module.exports = async (req, res) => {
   if (!(await usuario(req))) return res.status(401).json({ error: "No autorizado" });
   const dias = Math.min(Math.max(parseInt(req.query.dias || "7", 10) || 7, 1), 60);
   const desde = new Date(Date.now() - dias * 864e5).toISOString();
+  const me = await fetch("https://api.mercadopago.com/users/me", { headers: { Authorization: "Bearer " + tok } });
+  if (!me.ok) return res.status(502).json({ error: "Mercado Pago respondió " + me.status });
+  const yo = (await me.json()).id;
   const out = [];
   for (let off = 0; off < 1000; off += 100) {
     const u = "https://api.mercadopago.com/v1/payments/search?sort=date_created&criteria=desc&range=date_created"
@@ -36,8 +40,8 @@ module.exports = async (req, res) => {
     const r = await fetch(u, { headers: { Authorization: "Bearer " + tok } });
     if (!r.ok) return res.status(502).json({ error: "Mercado Pago respondió " + r.status });
     const j = await r.json(), L = j.results || [];
-    if (req.query.raw) return res.json(L.filter((p) => p.payment_method_id === req.query.raw).slice(0, 2));
-    out.push(...L.map(pick));
+    // solo plata que entra: cobrada por el gym y no pagada por el gym
+    out.push(...L.filter((p) => p.collector_id === yo && (p.payer || {}).id != yo && p.status === "approved").map(pick));
     if (L.length < 100) break;
   }
   res.json({ desde, pagos: out });
