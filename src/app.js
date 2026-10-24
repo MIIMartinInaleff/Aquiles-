@@ -124,7 +124,7 @@ const SECS=[["inicio","Inicio"],["checkin","Check-in"],["socios","Socios"],["avi
 const GRUPO=k=>["cobrar","mp","fact","gastos"].includes(k)?"din":k==="ajustes"?"cfg":"soc";;
 let cur="inicio";let SYNC_TXT=window.__sb?"Conectado":"Administración";
 function side(){
-  const items=SECS.map(([k,l],i)=>`<button class="nav" data-k="${k}" data-g="${GRUPO(k)}"${i&&GRUPO(k)!==GRUPO(SECS[i-1][0])?" data-sep":""} aria-current="${k===cur}">${ICON[k]}<span>${l}</span>${k==="fact"||k==="gastos"?'<span class="lock">APARTE</span>':""}${k==="mp"&&sinId()?`<span class="badge">${sinId()}</span>`:""}</button>`).join("");
+  const items=SECS.map(([k,l],i)=>`<button class="nav" data-k="${k}" data-g="${GRUPO(k)}"${i&&GRUPO(k)!==GRUPO(SECS[i-1][0])?" data-sep":""} aria-current="${k===cur}">${ICON[k]}<span>${l}</span>${k==="mp"?'<span class="mp-tag" title="Mercado Pago">MP</span>':""}${k==="mp"&&sinId()?`<span class="badge">${sinId()}</span>`:""}</button>`).join("");
   $("#side").innerHTML=`<div class="brand">${window.__logo?`<img class="mark-img" src="${window.__logo}" alt="">`:'<div class="mark">A</div>'}<div><b>AQUILES</b><small>WORLD GYM</small></div></div>
    <div class="clock"><b id="clk">--:--</b><span id="fecha"></span></div>${items}
    <div class="side-foot"><div class="avatar">A</div><div><strong>Aquiles World Gym</strong><span id="sync">${SYNC_TXT}</span></div>${window.__sb?`<button id="salir" aria-label="Salir" title="Salir"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/></svg></button>`:""}</div>`;
@@ -180,7 +180,7 @@ function mini(t,L){const d=HRS.map(h=>L.filter(i=>i.t.getHours()===h).length),ma
 const rowS=s=>`<div class="row" data-n="${s.n}"><div class="n"><strong>${esc(s.nom)}</strong><span>${s.n} · ${fdias(s)}</span></div><span class="count" aria-hidden="true">›</span></div>`;
 const V={};
 V.inicio=()=>{const late=SOC.filter(s=>est(s)==="late").sort((a,b)=>b.venc-a.venc),warn=SOC.filter(s=>est(s)==="warn").sort((a,b)=>a.venc-b.venc),act=SOC.filter(s=>["ok","warn"].includes(est(s))).length;
- return`<div class="head"><div><h1>Hola, Martín</h1></div><div style="display:flex;gap:10px;flex-wrap:wrap"><button class="btn dark" data-go="checkin">Registrar ingreso</button><button class="btn" data-go="cobrar">Cobrar</button></div></div>
+ return`<div class="head"><div><h1>Hola, familia</h1></div><div style="display:flex;gap:10px;flex-wrap:wrap"><button class="btn dark" data-go="checkin">Registrar ingreso</button><button class="btn" data-go="cobrar">Cobrar</button></div></div>
  ${sinId()?`<button class="alert" data-go="mp"><b>${sinId()} transferencia${sinId()===1?"":"s"} sin identificar</b><span>Revisar →</span></button>`:""}
  <div class="strip" style="--n:4"><div class="kpi"><small>Socios activos</small><b>${act}</b></div><div class="kpi"><small>Ingresos hoy</small><b>${ingDia(0).length}</b></div>
  <div class="kpi"><small>Por vencer · 7 días</small><b>${warn.length}</b></div><div class="kpi hot"><small>Vencidos sin pagar</small><b>${late.length}</b></div></div>
