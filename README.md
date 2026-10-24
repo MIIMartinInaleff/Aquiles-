@@ -119,6 +119,7 @@ PK `(col, id)`. RLS: solo `authenticated`. Está en la publicación de realtime.
 9. **Ajustes:** precios de cuotas y productos.
 
 ### Diseño
+- Menú en tres grupos (con una línea entre grupos): **socios** (Inicio, Check-in, Socios, Avisos) se pinta amarillo al estar activo; **plata** (Cobrar, Transferencias, Facturación, Gastos) verde; **Ajustes** azul. Ver `GRUPO()` en `src/app.js`.
 - Piel "oro": negro con degradés rojo/amarillo/naranja y texto blanco. Fuentes: **Archivo** expandida (títulos) y **Manrope** (texto).
 - Menú lateral flotante redondeado y compacto (sin scroll) en PC; barra inferior en celular. Logo del gym en menú, login y favicon.
 - El usuario prefiere **poco texto e interfaz simple**; listas en filas (no tarjetas) y sin scroll horizontal.

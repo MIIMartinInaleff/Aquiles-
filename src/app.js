@@ -119,15 +119,17 @@ ajustes:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width
 mp:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 7h13l-3-3M17 17H4l3 3"/></svg>',
 gastos:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 7h8M8 11h2M12 11h2M16 11h0M8 15h2M12 15h2M8 18h8"/></svg>',
 trash:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14"/></svg>'};
-const SECS=[["inicio","Inicio"],["checkin","Check-in"],["socios","Socios"],["cobrar","Cobrar"],["mp","Transferencias"],["avisos","Avisos"],["fact","Facturación"],["gastos","Gastos"],["ajustes","Ajustes"]];
+const SECS=[["inicio","Inicio"],["checkin","Check-in"],["socios","Socios"],["avisos","Avisos"],["cobrar","Cobrar"],["mp","Transferencias"],["fact","Facturación"],["gastos","Gastos"],["ajustes","Ajustes"]]
+/* grupos del menú: socios (amarillo), plata (verde), ajustes (azul) */
+const GRUPO=k=>["cobrar","mp","fact","gastos"].includes(k)?"din":k==="ajustes"?"cfg":"soc";;
 let cur="inicio";let SYNC_TXT=window.__sb?"Conectado":"Administración";
 function side(){
-  const items=SECS.map(([k,l])=>`<button class="nav" data-k="${k}" aria-current="${k===cur}">${ICON[k]}<span>${l}</span>${k==="fact"||k==="gastos"?'<span class="lock">APARTE</span>':""}${k==="mp"&&sinId()?`<span class="badge">${sinId()}</span>`:""}</button>`).join("");
+  const items=SECS.map(([k,l],i)=>`<button class="nav" data-k="${k}" data-g="${GRUPO(k)}"${i&&GRUPO(k)!==GRUPO(SECS[i-1][0])?" data-sep":""} aria-current="${k===cur}">${ICON[k]}<span>${l}</span>${k==="fact"||k==="gastos"?'<span class="lock">APARTE</span>':""}${k==="mp"&&sinId()?`<span class="badge">${sinId()}</span>`:""}</button>`).join("");
   $("#side").innerHTML=`<div class="brand">${window.__logo?`<img class="mark-img" src="${window.__logo}" alt="">`:'<div class="mark">A</div>'}<div><b>AQUILES</b><small>WORLD GYM</small></div></div>
    <div class="clock"><b id="clk">--:--</b><span id="fecha"></span></div>${items}
    <div class="side-foot"><div class="avatar">A</div><div><strong>Aquiles World Gym</strong><span id="sync">${SYNC_TXT}</span></div>${window.__sb?`<button id="salir" aria-label="Salir" title="Salir"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/></svg></button>`:""}</div>`;
   if($("#salir"))$("#salir").onclick=async()=>{await window.__sb.auth.signOut();location.reload()};
-  const CORTO={checkin:"Ingreso",mp:"Transf.",fact:"Factur.",gastos:"Gastos"};$("#mbar").innerHTML=SECS.map(([k,l])=>`<button class="nav" data-k="${k}" aria-current="${k===cur}">${ICON[k]}<span>${CORTO[k]||l}</span>${k==="mp"&&sinId()?`<span class="badge">${sinId()}</span>`:""}</button>`).join("");
+  const CORTO={checkin:"Ingreso",mp:"Transf.",fact:"Factur.",gastos:"Gastos"};$("#mbar").innerHTML=SECS.map(([k,l])=>`<button class="nav" data-k="${k}" data-g="${GRUPO(k)}" aria-current="${k===cur}">${ICON[k]}<span>${CORTO[k]||l}</span>${k==="mp"&&sinId()?`<span class="badge">${sinId()}</span>`:""}</button>`).join("");
   $$(".nav").forEach(b=>b.onclick=()=>go(b.dataset.k));
 }
 function tick(){const d=new Date();if($("#clk")){$("#clk").textContent=hhmm(d);$("#fecha").textContent=d.toLocaleDateString("es-AR",{weekday:"long",day:"numeric",month:"long"})}}
