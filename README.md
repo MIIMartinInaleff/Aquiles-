@@ -62,6 +62,7 @@ PK `(col, id)`. RLS: solo `authenticated`. Está en la publicación de realtime.
 | `ing` | id | ingreso (check-in) |
 | `gas` | `mes\|id` | gasto del mes |
 | `trf` | id del pago de Mercado Pago | transferencia y su estado |
+| `avi` | id numérico | socio incluido en un Excel de avisos |
 | `cfg` | `cuotas`, `prods`, `pcamb`, `gtpl`, `alias`, `mpdesde` | configuración (`{v: ...}`) |
 
 ### Sincronización (en `src/app.js`, sección "sincronización con Supabase")
@@ -112,7 +113,7 @@ PK `(col, id)`. RLS: solo `authenticated`. Está en la publicación de realtime.
 3. **Socios:** lista (100 por vez + "Mostrar más"), búsqueda, filtros, ficha con botón de WhatsApp, alta de socio, exportar a Excel.
 4. **Cobrar:** cuotas, productos (con "Producto nuevo"), método de pago, pase gratis, fecha de pago, vencimiento.
 5. **Transferencias:** Mercado Pago en vivo + estadísticas.
-6. **Avisos:** Excel para WhatsApp con el formato "PARA ENVIAR" (vencen hoy y en 3 días; vencidos hasta 30 días).
+6. **Avisos:** Excel para WhatsApp con el formato "PARA ENVIAR" (vencen en 5 días o menos; vencidos hasta 30 días). Cada Excel descargado anota a esos socios en el historial `AVI` (colección `avi`: `{id, f, tipo:"por"|"ven", n, venc}`); abajo se ve "Ya avisados" de los últimos 30 días con si ya pagó. Los ya avisados para el mismo vencimiento vienen destildados y con la etiqueta "Ya avisado dd/mm".
 7. **Facturación:** total, efectivo/transferencia, AOV, cobrado por día con tooltips, cuotas vs productos, últimos 190 cobros con "Corregir".
 8. **Gastos:** punto de equilibrio, por categoría (luz/gas/agua agrupados), mes a mes, montos editables. Sin alquiler.
 9. **Ajustes:** precios de cuotas y productos.

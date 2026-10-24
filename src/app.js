@@ -271,13 +271,21 @@ V.mp=()=>{const vivo=!!window.__sb;const pend=TRF.filter(t=>t.estado==="pend"),i
  <div class="h2row" style="margin-top:28px"><h2>Ya registradas</h2></div>
  ${hechas.length?`<div class="tbl"><table><thead><tr><th>Hora</th><th>Quién transfirió</th><th>Quedó como</th><th class="r">Monto</th></tr></thead><tbody>${hechas.map(t=>{const s=t.n?BYN.get(t.n):null;return`<tr${s?` class="click" data-n="${s.n}"`:""}><td>${diaCorto(t.h)}${hhmm(t.h)}</td><td>${esc(tNom(t))}</td><td>${t.estado==="manual"?`${s?`<b>${esc(s.nom)}</b> <span class="num">${s.n}</span>`:""}<div class="count">Ya estaba cargado a mano${t.cob&&t.cob.h?` a las ${hhmm(t.cob.h)}`:""} · no se cuenta dos veces</div>`:s?`Cuota de <b>${esc(s.nom)}</b> <span class="num">${s.n}</span>`:'<span class="count">No es del gym · no suma</span>'}</td><td class="r money">${ars(t.monto)}</td></tr>`}).join("")}</tbody></table></div>`:'<p class="count">Todavía ninguna.</p>'}
  ${vivo?`<div class="h2row" style="margin-top:36px"><h2>Estadísticas de Mercado Pago</h2></div>${mpStats()}`:""}`};
-V.avisos=()=>{const T=TODAY(),por=SOC.filter(s=>s.tel&&[0,3].includes(dias(s))).sort((a,b)=>dias(a)-dias(b)),ven=SOC.filter(s=>s.tel&&dias(s)!==null&&dias(s)<0&&dias(s)>=-30).sort((a,b)=>dias(b)-dias(a));
- const L=STATE.av==="por"?por:ven,key=STATE.av;if(!STATE.avSel[key])STATE.avSel[key]=new Set(L.map(s=>s.n));const sel=STATE.avSel[key];
+/* historial de avisos: se anota cada socio incluido en un Excel descargado */
+let AVI=[]; // {id,f:Date,tipo:"por"|"ven",n,venc:Date}
+const avisado=(s,tipo)=>AVI.find(a=>a.n===s.n&&a.tipo===tipo&&s.venc&&a.venc&&a.venc.getTime()===s.venc.getTime());
+const enPor=s=>{const d=dias(s);return d!==null&&d>=0&&d<=5},enVen=s=>{const d=dias(s);return d!==null&&d<0&&d>=-30};
+V.avisos=()=>{const T=TODAY(),por=SOC.filter(s=>s.tel&&enPor(s)).sort((a,b)=>dias(a)-dias(b)),ven=SOC.filter(s=>s.tel&&enVen(s)).sort((a,b)=>dias(b)-dias(a));
+ const L=STATE.av==="por"?por:ven,key=STATE.av;if(!STATE.avSel[key])STATE.avSel[key]=new Set(L.filter(s=>!avisado(s,key)).map(s=>s.n));const sel=STATE.avSel[key];
+ const H=AVI.filter(a=>a.tipo===key&&diffD(T,a.f)<=30).sort((a,b)=>b.f-a.f).slice(0,150);
  return`<div class="head"><div><h1>Avisos por WhatsApp</h1></div></div>
- <div class="seg" style="max-width:560px;margin-bottom:18px"><button data-at="por" aria-pressed="${key==="por"}">Vencen hoy y en 3 días · ${por.length}</button><button data-at="ven" aria-pressed="${key==="ven"}">Vencidos · ${ven.length}</button></div>
+ <div class="seg" style="max-width:560px;margin-bottom:18px"><button data-at="por" aria-pressed="${key==="por"}">Vencen en 5 días o menos · ${por.length}</button><button data-at="ven" aria-pressed="${key==="ven"}">Vencidos · ${ven.length}</button></div>
  <div class="tbl" style="max-height:600px"><table><thead><tr><th style="width:44px"><input type="checkbox" id="avall" aria-label="Seleccionar todos" ${L.length&&L.every(s=>sel.has(s.n))?"checked":""}></th><th>Nombre</th><th>Teléfono</th><th>Último pago</th><th>Vence</th><th>${key==="ven"?"Venció hace":"Faltan"}</th></tr></thead><tbody>
- ${L.map(s=>`<tr class="click" data-avi="${s.n}"><td><input type="checkbox" aria-label="Elegir a ${esc(s.nom)}" ${sel.has(s.n)?"checked":""}></td><td>${esc(s.nom)} <span class="num">${s.n}</span></td><td>${telFmt(s.tel)}</td><td>${fmt(s.ult)}</td><td>${fmt(s.venc)}</td><td>${dias(s)===0?'<span class="pill p-warn">Hoy</span>':Math.abs(dias(s))+" días"}</td></tr>`).join("")||`<tr><td colspan="6" class="count">No hay socios en esta lista hoy.</td></tr>`}</tbody></table></div>
- <div style="display:flex;gap:12px;align-items:center;justify-content:flex-end;margin-top:16px;flex-wrap:wrap"><span class="count">${L.filter(s=>sel.has(s.n)).length} elegidos</span><button class="btn" id="avx" ${L.some(s=>sel.has(s.n))?"":"disabled"}>Descargar Excel</button></div>`};
+ ${L.map(s=>`<tr class="click" data-avi="${s.n}"><td><input type="checkbox" aria-label="Elegir a ${esc(s.nom)}" ${sel.has(s.n)?"checked":""}></td><td>${esc(s.nom)} <span class="num">${s.n}</span>${avisado(s,key)?` <span class="tag">Ya avisado ${fmtS(avisado(s,key).f)}</span>`:""}</td><td>${telFmt(s.tel)}</td><td>${fmt(s.ult)}</td><td>${fmt(s.venc)}</td><td>${dias(s)===0?'<span class="pill p-warn">Hoy</span>':Math.abs(dias(s))+(Math.abs(dias(s))===1?" día":" días")}</td></tr>`).join("")||`<tr><td colspan="6" class="count">No hay socios en esta lista hoy.</td></tr>`}</tbody></table></div>
+ <div style="display:flex;gap:12px;align-items:center;justify-content:flex-end;margin-top:16px;flex-wrap:wrap"><span class="count">${L.filter(s=>sel.has(s.n)).length} elegidos</span><button class="btn" id="avx" ${L.some(s=>sel.has(s.n))?"":"disabled"}>Descargar Excel</button></div>
+ <div class="h2row" style="margin-top:32px"><h2>Ya avisados · ${key==="por"?"por vencer":"vencidos"}</h2><span class="count">últimos 30 días · ${H.length}</span></div>
+ ${H.length?`<div class="tbl" style="max-height:480px"><table><thead><tr><th>Avisado</th><th>Nombre</th><th>Vencía</th><th>Ahora</th></tr></thead><tbody>${H.map(a=>{const s=BYN.get(a.n);if(!s)return"";const pago=s.venc&&a.venc&&s.venc>a.venc;
+  return`<tr class="click" data-n="${s.n}"><td>${fmtS(a.f)} ${hhmm(a.f)}</td><td>${esc(s.nom)} <span class="num">${s.n}</span></td><td>${fmt(a.venc)}</td><td>${pago?`<span class="pill p-ok">Ya pagó</span> <span class="count">vence ${fmtS(s.venc)}</span>`:pill(s)}</td></tr>`}).join("")}</tbody></table></div>`:'<p class="count">Todavía no se mandó ningún aviso de esta lista.</p>'}`};
 const estAv=d=>d<0?"Vencido":d===0?"Vence Hoy":"Recordatorio";
 function msgAv(s){const n=s.raw,f=fmtS(s.venc),d=dias(s);
  if(d<0)return`Hola ${n}! 💪\n\nTe escribimos para recordarte que tu cuota en Aquiles World Gym ya se encuentra vencida desde el ${f}.\n\nPara seguir entrenando y mantener tu acceso activo, es necesario regularizar el pago.\n\nSi ya abonaste, desestimá este mensaje 🙌\n\n¡Gracias por tu compromiso con el entrenamiento! 💪`;
@@ -286,13 +294,14 @@ function msgAv(s){const n=s.raw,f=fmtS(s.venc),d=dias(s);
 function descargar(nombre,hoja,filas,anchos){if(typeof XLSX==="undefined"&&window.__sb){toast("Preparando el Excel…");const sc=document.createElement("script");sc.src="lib/xlsx.full.min.js";sc.onload=()=>descargar(nombre,hoja,filas,anchos);sc.onerror=()=>toast("No se pudo preparar el Excel. Probá de nuevo.");document.head.appendChild(sc);return}
  if(typeof XLSX==="undefined"){toast("En esta vista no se pueden bajar archivos. En el sistema publicado sí.");return}
  const ws=XLSX.utils.aoa_to_sheet(filas);if(anchos)ws["!cols"]=anchos.map(w=>({wch:w}));const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,hoja);XLSX.writeFile(wb,nombre,{cellDates:true});toast("Descargado: "+nombre)}
-function previewAv(){const sel=STATE.avSel[STATE.av],rows=SOC.filter(s=>sel.has(s.n)&&(STATE.av==="por"?[0,3].includes(dias(s)):dias(s)<0&&dias(s)>=-30));
+function previewAv(){const sel=STATE.avSel[STATE.av],rows=SOC.filter(s=>sel.has(s.n)&&(STATE.av==="por"?enPor(s):enVen(s)));
  const fn=`avisos_${STATE.av==="por"?"por_vencer":"vencidos"}_${fmt(TODAY()).replace(/\//g,"-")}.xlsx`;
  modal(`<div class="sheet-h"><div><h2 style="font-size:22px">${fn}</h2><p class="sub" style="margin-top:4px">${rows.length} socios · hoja "PARA ENVIAR"</p></div><button class="btn ghost sm" data-x>Cerrar</button></div>
  <div class="tbl" style="background:var(--panel2);max-height:420px"><table><thead><tr><th>Nombre</th><th>Teléfono</th><th>Último Pago</th><th>Fecha de Vencimiento</th><th>Días Restantes</th><th>Estado</th><th>Mensaje</th></tr></thead><tbody>
  ${rows.map(s=>`<tr><td>${esc(s.raw)}</td><td>${s.tel}</td><td>${fmt(s.ult)}</td><td>${fmt(s.venc)}</td><td>${dias(s)}</td><td>${estAv(dias(s))}</td><td style="max-width:280px;overflow:hidden;text-overflow:ellipsis" title="${esc(msgAv(s))}">${esc(msgAv(s).split("\n")[2])}</td></tr>`).join("")}</tbody></table></div>
  <div style="margin-top:16px"><button class="btn big" id="dl">Descargar Excel</button></div>`,true);
- $("#dl").onclick=()=>{close();descargar(fn,"PARA ENVIAR",[["Nombre","Teléfono","Último Pago","Fecha de Vencimiento","Días Restantes","Estado","Mensaje"],...rows.map(s=>[s.raw,+s.tel,s.ult,s.venc,dias(s),estAv(dias(s)),msgAv(s)])],[34,14,12,20,15,14,60]);const hoy=fmtS(TODAY());rows.forEach(s=>s.aviso=hoy)}}
+ $("#dl").onclick=()=>{close();descargar(fn,"PARA ENVIAR",[["Nombre","Teléfono","Último Pago","Fecha de Vencimiento","Días Restantes","Estado","Mensaje"],...rows.map(s=>[s.raw,+s.tel,s.ult,s.venc,dias(s),estAv(dias(s)),msgAv(s)])],[34,14,12,20,15,14,60]);const hoy=fmtS(TODAY()),now=new Date(),tipo=STATE.av;rows.forEach(s=>{s.aviso=hoy;AVI.push({id:nid(),f:now,tipo,n:s.n,venc:s.venc})});
+  STATE.avSel[tipo]=null;render(true)}}
 function periodo(){const T=TODAY(),p=STATE.per;
  if(p==="hoy")return{a:T,b:T,l:"Hoy, "+fmt(T)};
  if(p==="sem"){const a=addD(T,-((T.getDay()+6)%7));return{a,b:T,l:`Esta semana · del ${fmtS(a)} al ${fmtS(T)}`}}
@@ -557,7 +566,7 @@ function coleccion(){const m=new Map(),put=(col,id,o)=>{const j=stable(o);m.set(
  SOC.forEach(s=>put("soc",s.n,s));COB.forEach(c=>put("cob",c.id,{...c,cob:undefined}));INGRESOS.forEach(i=>put("ing",i.id,i));
  Object.entries(GMES).forEach(([mes,L])=>L.forEach(g=>put("gas",mes+"|"+g.id,{...g,mes})));
  put("cfg","cuotas",{v:CUOTAS});put("cfg","prods",{v:PRODS});put("cfg","pcamb",{v:PCAMB});put("cfg","gtpl",{v:GTPL});
- if(window.__sb){TRF.forEach(t=>put("trf",t.id,{...t,cob:t.cob?t.cob.id:null}));put("cfg","alias",{v:[...ALIAS]});if(MPDESDE)put("cfg","mpdesde",{v:MPDESDE})}return m}
+ if(window.__sb){AVI.forEach(a=>put("avi",a.id,a));TRF.forEach(t=>put("trf",t.id,{...t,cob:t.cob?t.cob.id:null}));put("cfg","alias",{v:[...ALIAS]});if(MPDESDE)put("cfg","mpdesde",{v:MPDESDE})}return m}
 function estado(t){SYNC_TXT=t;const e=$("#sync");if(e)e.textContent=t}
 async function sincronizar(){if(syncing){syncAgain=true;return}syncing=true;const sb=window.__sb;
  try{const cur=coleccion(),ups=[],dels=[];cur.forEach((v,k)=>{if(SNAP.get(k)!==v.j)ups.push(v)});SNAP.forEach((_,k)=>{if(!cur.has(k))dels.push(k)});
@@ -578,6 +587,7 @@ function hidratarDB(rows){rows.forEach(r=>SNAP.set(r.col+"|"+r.id,stable(r.data)
  const cf=Object.fromEntries(rows.filter(r=>r.col==="cfg").map(r=>[r.id,r.data.v]));
  if(cf.cuotas)CUOTAS.splice(0,CUOTAS.length,...cf.cuotas);if(cf.prods)PRODS.splice(0,PRODS.length,...cf.prods);if(cf.pcamb)PCAMB.splice(0,PCAMB.length,...cf.pcamb);if(cf.gtpl)GTPL.splice(0,GTPL.length,...cf.gtpl);
  if(cf.alias){ALIAS.clear();cf.alias.forEach(([k,v])=>ALIAS.set(k,v))}if(cf.mpdesde)MPDESDE=cf.mpdesde;
+ AVI=by("avi").map(a=>({...a,f:new Date(a.f),venc:revD(a.venc)}));
  TRF.length=0;by("trf").forEach(t=>{t.h=rev(t.h);if(t.cob)t.cob=COB.find(c=>c.id===t.cob)||null;TRF.push(t)});
  // las filas de la base reemplazan al estado local: los snapshots quedan con el formato de la base
  coleccion().forEach((v,k)=>{if(SNAP.has(k))SNAP.set(k,v.j)})}
@@ -586,6 +596,7 @@ function aplicar(p){const r=p.new&&p.new.col?p.new:p.old;if(!r||!r.col)return;co
   if(r.col==="soc"){const i=SOC.findIndex(s=>s.n===r.id);if(i>=0){SOC.splice(i,1);BYN.delete(r.id)}}
   else if(r.col==="cob"){const i=COB.findIndex(c=>String(c.id)===r.id);if(i>=0)COB.splice(i,1)}
   else if(r.col==="ing")INGRESOS=INGRESOS.filter(x=>String(x.id)!==r.id);
+  else if(r.col==="avi")AVI=AVI.filter(a=>String(a.id)!==r.id);
   else if(r.col==="trf"){const i=TRF.findIndex(t=>String(t.id)===r.id);if(i>=0)TRF.splice(i,1)}
   else if(r.col==="gas"){const j=r.id.indexOf("|"),m=r.id.slice(0,j),id=r.id.slice(j+1);if(GMES[m])GMES[m]=GMES[m].filter(g=>String(g.id)!==id)}
   refrescar();return}
@@ -594,6 +605,7 @@ function aplicar(p){const r=p.new&&p.new.col?p.new:p.old;if(!r||!r.col)return;co
  else if(r.col==="cob"){d.f=revD(d.f);d.h=rev(d.h);const c=COB.find(x=>String(x.id)===r.id);if(c)Object.assign(c,d);else{COB.push(d);COB.sort((a,b)=>a.id-b.id)}}
  else if(r.col==="ing"){d.t=new Date(d.t);const i=INGRESOS.find(x=>String(x.id)===r.id);if(i)Object.assign(i,d);else{INGRESOS.push(d);INGRESOS.sort((a,b)=>b.t-a.t)}}
  else if(r.col==="gas"){const m=d.mes;delete d.mes;const L=GMES[m]=GMES[m]||[],g=L.find(x=>String(x.id)===String(d.id));if(g)Object.assign(g,d);else L.push(d)}
+ else if(r.col==="avi"){d.f=new Date(d.f);d.venc=revD(d.venc);const a=AVI.find(x=>String(x.id)===r.id);if(a)Object.assign(a,d);else AVI.push(d)}
  else if(r.col==="trf"){d.h=rev(d.h);d.cob=d.cob?COB.find(c=>c.id===d.cob)||null:null;const t=TRF.find(x=>String(x.id)===r.id);if(t)Object.assign(t,d);else TRF.push(d)}
  else if(r.col==="cfg"){const A={cuotas:CUOTAS,prods:PRODS,pcamb:PCAMB,gtpl:GTPL}[r.id];if(A)A.splice(0,A.length,...d.v);if(r.id==="alias"){ALIAS.clear();d.v.forEach(([k,v])=>ALIAS.set(k,v))}if(r.id==="mpdesde")MPDESDE=d.v}
  const v=coleccion().get(k);if(v)SNAP.set(k,v.j);refrescar()}
