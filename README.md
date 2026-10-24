@@ -22,6 +22,7 @@ Sistema web para administrar el gimnasio. Lo usan Martín (dueño), José y Lour
 | `api/mp.js` | Función serverless de Vercel: lee los cobros/pagos de Mercado Pago. |
 | `lib/supabase.min.js` | supabase-js 2.45.4 (servido desde el mismo dominio, no CDN, para evitar bloqueadores). |
 | `lib/xlsx.full.min.js` | SheetJS 0.18.5. Se carga **solo cuando se exporta un Excel** (no al entrar). |
+| `marketing/cartilla/` | Cartilla de precios para imprimir (frente y dorso), con precios, reglas del Plan Amigo y cómo se generó (Kie, GPT Image 2). Ver su `README.md`. |
 
 ### Cómo hacer un cambio
 1. Editar `src/app.js` (o `src/style.html`).
@@ -91,7 +92,9 @@ PK `(col, id)`. RLS: solo `authenticated`. Está en la publicación de realtime.
   - si no → fecha de pago + 30;
   - nunca queda un vencimiento en el pasado. La opción "Desde que venció" solo aparece si vencimiento + 30 > fecha de pago.
   - Cada cobro guarda `vto`; `recalcSocio()` recalcula el socio reproduciendo sus cobros.
-- **Cuotas:** $47.000 normal; descuentos familiares $45.000 / $43.000; plan personalizado. Precios editables en Ajustes.
+- **Cuotas:** $47.000 normal; descuentos familiares $45.000 / $43.000 por persona (solo socios con 3+ meses); personalizado $70.000. Precios editables en Ajustes.
+- **Plan Amigo** (definido en la cartilla, todavía no está en el sistema): el socio que trae 1 amigo nuevo paga su cuota a $40.000; si trae 2, tiene 2 meses a $40.000. El descuento es solo para el socio, no para el amigo nuevo.
+- **Productos** (cartilla): remera $27.500 socios +3 meses / $32.000 general; shaker $21.500 / $25.000.
 - **Cobrar:** método por defecto **Transferencia** (amarillo); Efectivo en verde; Mixto abajo.
 - **"No es del gym":** transferencias que entran pero no son del gimnasio; no suman en Facturación.
 - **Búsqueda** (`buscar()`, `coincide()`): sin acentos, por palabras, N° de socio (`450` o `AWG450`), DNI/teléfono con 4+ dígitos. Ordena primero activos y visitas recientes.
@@ -145,7 +148,8 @@ Con Playwright (Chromium ya instalado en el entorno):
 ## Pendientes
 - Lector QR para el check-in.
 - Montos reales de gastos.
-- Precios de remeras y shakers (socio / no socio) + flyer; stock de productos (opcional).
+- Cargar en el sistema los precios de la cartilla: Plan Amigo ($40.000), remera y shaker con precio socio (+3 meses) y precio general. Stock de productos (opcional).
+- Cartilla: si mandan foto real del shaker, rehacer el dorso con esa foto.
 - Revisar discrepancias con el Excel: AWG580 (sistema 20/10 $47.000 vs Excel 17/10 $43.000) y AWG774 (sistema efectivo vs Excel transferencia).
 - Hacer privado el repositorio de GitHub.
 - Métricas de check-in por mes.
