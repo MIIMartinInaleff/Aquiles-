@@ -129,6 +129,12 @@ PK `(col, id)`. RLS: solo `authenticated`. Está en la publicación de realtime.
 
 ---
 
+## Excel de respaldo (Google Drive)
+- El gym sigue anotando todo en Google Sheets como respaldo, en una carpeta compartida con la cuenta de Martín (carpeta "PLANILLAS EXEL EDITABLE"): datos de inscriptos, pagos mensuales y estado de socios.
+- Se leen con el conector de Google Drive (exportar como CSV). El conector **no puede editar celdas**: para cambios se crea una hoja nueva en la carpeta con las filas a pegar y las correcciones.
+- Conciliación: comparar por N° de socio + monto + fecha (±3 días). Los productos no se anotan en el Excel de pagos.
+- El Excel es la referencia para forma de pago y fechas, salvo que el usuario diga otra cosa. Revisar N° de socio cruzados en el Excel de pagos contra el de socios.
+
 ## Pruebas
 Con Playwright (Chromium ya instalado en el entorno):
 - Servir el build: `timeout 120 python3 -m http.server 8765` (no usar `pkill`).
