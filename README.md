@@ -112,7 +112,7 @@ PK `(col, id)`. RLS: solo `authenticated`. Está en la publicación de realtime.
 
 ### Secciones
 1. **Inicio:** activos, ingresos de hoy, vencidos para cobrar, por vencer, aviso de transferencias sin identificar.
-2. **Check-in:** registrar ingreso (QR pendiente), "Dejar pasar igual", borrar ingreso, gráficos de hoy, ayer y mes.
+2. **Check-in:** registrar ingreso (QR pendiente), "Dejar pasar igual", borrar ingreso, gráficos de hoy, ayer y mes. Al buscar, los que ya ingresaron hoy salen con borde verde, la etiqueta "✓ Ya ingresó hoy · hh:mm" y el botón pasa a "Registrar otra vez" (secundario) para no repetir.
 3. **Socios:** lista (100 por vez + "Mostrar más"), búsqueda, filtros, ficha con botón de WhatsApp, alta de socio, exportar a Excel.
 4. **Cobrar:** cuotas, productos (con "Producto nuevo"), método de pago, pase gratis, fecha de pago, vencimiento.
 5. **Transferencias:** Mercado Pago en vivo + estadísticas.
