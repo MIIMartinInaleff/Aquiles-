@@ -61,7 +61,11 @@ function infoVenc(s,t){const d=dias(s),nv=d!==null&&d>=0?addD(s.venc,30):addD(TO
 const diaCorto=h=>{const d=diffD(TODAY(),h);return d===0?"":d===1?'<span class="count" style="display:block;font-weight:600">Ayer</span>':`<span class="count" style="display:block;font-weight:600">${fmtS(h)}</span>`};
 function reidentificar(){TRF.filter(t=>t.estado==="pend"&&!t.n).forEach(identificar)}
 const sinId=()=>TRF.filter(t=>t.estado==="pend"&&!t.n).length;
-function cobrarTrf(t,s){if(!s){t.estado="otro";return}const cu=CUOTAS.find(c=>c.p===t.monto&&c.p),now=new Date();
+/* cobro cargado a mano (no por MP) del mismo socio y monto, ±3 días */
+const cobroManual=(n,monto,f)=>COB.find(c=>!c.trf&&!c.linked&&c.n===n&&c.tr===monto&&Math.abs(diffD(c.f,f))<=3);
+function cobrarTrf(t,s){if(!s){t.estado="otro";return}
+  // si ya se cargó a mano, no se cuenta dos veces
+  const dup=cobroManual(s.n,t.monto,t.h);if(dup){t.estado="manual";t.cob=dup;t.n=s.n;dup.linked=true;return dup}const cu=CUOTAS.find(c=>c.p===t.monto&&c.p),now=new Date();
   COB.push({id:nid(),trf:true,n:s?s.n:null,f:d0(t.h),h:t.h,items:[s?{n:cu?cu.n:"Cuota (otro monto)",p:t.monto,cat:"cuota"}:{n:"Otro ingreso",p:t.monto,cat:"otro"}],ef:0,tr:t.monto});
   if(s){const fp=d0(t.h),c=COB[COB.length-1];if(c.items[0].cat==="cuota"){s.venc=s.venc&&s.venc>=fp?addD(s.venc,30):addD(fp,30);c.vto=s.venc}if(!s.ult||fp>=s.ult)s.ult=fp;t.n=s.n;t.cob=c}
   t.estado=s?"ok":"otro"}
@@ -479,7 +483,7 @@ function nuevo(pre={}){const num=nextNum();
  $("#ins").onclick=()=>save(true);if($("#ins2"))$("#ins2").onclick=()=>save(false)}
 
 function elegirSocio(t){let q="";const draw=()=>{const R=buscar(q,6);$("#esr").innerHTML=R.map(x=>`<div class="row" data-es="${x.n}"><div class="n"><strong>${esc(x.nom)}</strong><span>${x.n} · ${fdias(x)}</span></div>${pill(x)}</div>`).join("")||(q?'<p class="count">No encontré a nadie.</p>':"");
-   $$("[data-es]").forEach(r=>r.onclick=()=>{const s=BYN.get(r.dataset.es);if(t.cuil)ALIAS.set(t.cuil,s.n);cobrarTrf(t,s);close();toast(`Listo: cuota de ${s.nom}.${t.cuil?" La próxima vez que transfiera, lo reconozco solo.":""}`);render(true)})};
+   $$("[data-es]").forEach(r=>r.onclick=()=>{const s=BYN.get(r.dataset.es);if(t.cuil)ALIAS.set(t.cuil,s.n);const dup=cobrarTrf(t,s);close();toast(dup?`${s.nom} ya tenía este pago cargado a mano: no se cuenta dos veces`:`Listo: cuota de ${s.nom}.${t.cuil?" La próxima vez que transfiera, lo reconozco solo.":""}`);render(true)})};
  modal(`<div class="sheet-h"><div><h2 style="font-size:22px">¿De qué socio es?</h2><p class="sub" style="margin-top:4px">${esc(tNom(t))} transfirió ${ars(t.monto)} · ${fmtS(t.h)} ${hhmm(t.h)}</p></div><button class="btn ghost sm" data-x>Cerrar</button></div>
  <input class="input" id="esq" placeholder="Nombre, DNI o N° de socio" autocomplete="off"><div id="esr" style="margin-top:8px"></div>`);
  $("#esq").oninput=e=>{q=e.target.value;draw()};$("#esq").focus()}
@@ -521,12 +525,16 @@ function bind(){
   $("#guardar").onclick=()=>{const s=C.n?BYN.get(C.n):null,cu=CUOTAS.find(c=>c.k===C.cuota);
    const items=[];if(cu)items.push({n:cu.n,p:cu.p,cat:cu.k==="gratis"?"gratis":"cuota"});PRODS.forEach(p=>{for(let i=0;i<(C.q2[p.k]||0);i++)items.push({n:p.n,p:p.p,cat:"prod"})});
    const tot=items.reduce((a,i)=>a+i.p,0),ef=C.metodo==="efectivo"?tot:C.metodo==="transf"?0:Math.min(C.ef,tot),now=new Date();
-   const fp=C.fecha?iso(C.fecha):TODAY(),cob={id:nid(),n:s?s.n:null,f:fp,h:now,items,ef,tr:tot-ef};COB.push(cob);
+   const fp=C.fecha?iso(C.fecha):TODAY();
+   // aviso si ya se confirmó una transferencia de Mercado Pago igual para este socio
+   const yaMP=s&&tot-ef>0&&COB.find(c=>c.trf&&c.n===s.n&&c.tr===tot-ef&&Math.abs(diffD(c.f,fp))<=3);
+   if(yaMP&&!confirm(`${s.nom} ya tiene un cobro de ${ars(yaMP.tr)} confirmado desde Transferencias el ${fmtS(yaMP.f)}.\n\n¿Es otro pago distinto? Aceptar = cargar igual · Cancelar = no cargar`))return;
+   const cob={id:nid(),n:s?s.n:null,f:fp,h:now,items,ef,tr:tot-ef};COB.push(cob);
    let dupMsg="";if(s&&cob.tr>0){const t=TRF.find(t=>t.estado==="pend"&&t.n===s.n&&t.monto===cob.tr);if(t){t.estado="manual";t.cob=cob;cob.linked=true;dupMsg=` · La transferencia de ${title(t.nombre)} quedó marcada como ya cobrada`}}
    if(s&&cu){const vencida=s.venc&&dias(s)<0,mode=C.venc==="auto"?(s.venc&&!vencida?"suyo":"hoy"):C.venc;const vs=s.venc&&addD(s.venc,30);s.venc=mode==="suyo"&&vs&&vs>fp?vs:addD(fp,30);cob.vto=s.venc;if(!s.ult||fp>=s.ult)s.ult=fp}
    toast(`Cobro de ${ars(tot)} guardado a las ${hhmm(now)}${s&&cu?` · ${s.nom.split(" ")[0]} vence el ${fmt(s.venc)}`:""}${dupMsg}`);STATE.C=null;render(true)}}
  if(cur==="mp"){const T=id=>TRF.find(t=>t.id===+id);
-  $$("[data-tok]").forEach(b=>b.onclick=()=>{const t=T(b.dataset.tok),s=BYN.get(t.n);cobrarTrf(t,s);toast(`Cobro de ${s.nom} registrado · vence el ${fmt(s.venc)}`);render(true)});
+  $$("[data-tok]").forEach(b=>b.onclick=()=>{const t=T(b.dataset.tok),s=BYN.get(t.n);toast(cobrarTrf(t,s)?`${s.nom} ya tenía este pago cargado a mano: no se cuenta dos veces`:`Cobro de ${s.nom} registrado · vence el ${fmt(s.venc)}`);render(true)});
   $$("[data-tno]").forEach(b=>b.onclick=()=>{const t=T(b.dataset.tno);t.n=null;t.por=null;render(true)});
   $$("[data-tsoc]").forEach(b=>b.onclick=()=>elegirSocio(T(b.dataset.tsoc)));
   $$("[data-tnew]").forEach(b=>b.onclick=()=>{const t=T(b.dataset.tnew);nuevo({nom:title(t.nombre),dni:t.cuil?dniDe(t.cuil):"",trf:t})});
