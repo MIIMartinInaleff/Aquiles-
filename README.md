@@ -79,6 +79,8 @@ PK `(col, id)`. RLS: solo `authenticated`. Está en la publicación de realtime.
 - Vistas: `V.inicio`, `V.checkin`, `V.socios`, `V.cobrar`, `V.mp`, `V.avisos`, `V.fact`, `V.gastos`, `V.ajustes`. Cada una devuelve HTML (template literals).
 - `render(keep)` dibuja la sección actual (`cur`) y llama `bind()`, que engancha los eventos por sección (`if(cur==="socios"){...}`).
 - `ficha(n)` = modal con los datos del socio. `modal()`, `close()`, `toast()`.
+- `editar(n)` = "Editar datos" en la ficha (N°, nombre, DNI, teléfono, etc.). Si cambia el N°, `renumerar()` lo cambia en `BYN`, cobros, ingresos, transferencias, avisos y `ALIAS`; la sincronización borra la fila `soc` vieja y crea la nueva.
+- Saldo a favor: campo `s.favor` del socio; `favorUsado()` lo descuenta de la próxima cuota en Cobrar (botón "No descontar") y se borra al guardar.
 - Menú: `SECS` (lista de secciones), `side()` (menú lateral en PC, barra abajo en celular).
 
 ### Fechas (importante)

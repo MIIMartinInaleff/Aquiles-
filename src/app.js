@@ -462,13 +462,37 @@ function corregir(id){const c=COB.find(x=>String(x.id)===String(id));if(!c)retur
 function ficha(n){const s=BYN.get(n),pg=COB.filter(c=>c.n===n).sort((a,b)=>b.id-a.id),ing=INGRESOS.filter(i=>i.n===n).slice(0,5);
  const kv=[["DNI",dniFmt(s.dni)],["Teléfono",telFmt(s.tel)||"—"],["Email",s.mail||"—"],["Nacimiento · edad",s.nac?`${fmt(s.nac)} · ${edad(s)} años`:"—"],["Género",s.gen||"—"],["Domicilio",s.dir||"—"],["Plan",s.plan],["Último pago",fmt(s.ult)],...(s.favor>0?[["Saldo a favor",ars(s.favor)+" · se descuenta en el próximo cobro"]]:[])];
  modal(`<div class="sheet-h"><div><span class="num">${s.n}</span><h2 style="font-size:26px;margin:2px 0 8px">${esc(s.nom)}</h2>${pill(s)} <span class="count" style="margin-left:6px">${fdias(s)}</span></div><button class="btn ghost sm" data-x>Cerrar</button></div>
- <div class="actions"><button class="btn" id="fc">Cobrar</button><button class="btn ghost" id="fi">Ingreso</button><button class="btn ghost" id="fx">Cerrar</button></div>
+ <div class="actions"><button class="btn" id="fc">Cobrar</button><button class="btn ghost" id="fi">Ingreso</button><button class="btn ghost" id="fed">Editar datos</button><button class="btn ghost" id="fx">Cerrar</button></div>
  <div class="kv">${kv.map(([k,v])=>`<div><small>${k}</small><span style="word-break:break-word">${esc(v)}${k==="Teléfono"&&s.tel?` <a class="btn wa sm" href="${waLink(s)}" target="_blank" rel="noopener" style="margin-left:8px;vertical-align:middle;padding:5px 12px;font-size:13px">WhatsApp</a>`:""}</span></div>`).join("")}<div style="grid-column:1/-1"><small>Contacto de emergencia</small><span>${esc(s.emer||"—")}${s.temer?" · "+telFmt(s.temer):""}</span></div></div>
  <h2 style="margin-bottom:4px">Pagos desde julio</h2><div class="hist">${pg.map(c=>`<div><span>${fmt(c.f)}${c.h?" · "+hhmm(c.h):""} · ${esc(c.items.map(i=>i.n).join(" + "))}</span><b>${ars(c.ef+c.tr)} · ${c.ef&&c.tr?"Mixto":c.ef?"Efectivo":c.tr?"Transferencia":"Gratis"} <button class="link" data-edcob="${c.id}" style="margin-left:8px">Corregir</button></b></div>`).join("")||'<p class="count">Sin pagos desde julio.</p>'}
  ${ing.map(i=>`<div><span>Ingresó ${fmtS(i.t)} · ${hhmm(i.t)}</span><span></span></div>`).join("")}</div>`);
  $("#fc").onclick=()=>{close();STATE.C=null;go("cobrar");STATE.C.n=n;STATE.C.cuota=s.plan==="Personalizado"?"pers":"normal";render()};
  $("#fi").onclick=()=>{close();registrar(s)};
+ $("#fed").onclick=()=>editar(n);
  $$("#modal [data-edcob]").forEach(b=>b.onclick=()=>corregir(b.dataset.edcob));$("#fx").onclick=close}
+/* editar datos del socio; si cambia el N°, se cambia en cobros, ingresos, transferencias y avisos */
+function renumerar(viejo,nuevoN){const s=BYN.get(viejo);s.n=nuevoN;BYN.delete(viejo);BYN.set(nuevoN,s);
+ COB.forEach(c=>{if(c.n===viejo)c.n=nuevoN});INGRESOS.forEach(i=>{if(i.n===viejo)i.n=nuevoN});TRF.forEach(x=>{if(x.n===viejo)x.n=nuevoN});
+ AVI.forEach(a=>{if(a.n===viejo)a.n=nuevoN});ALIAS.forEach((v,k)=>{if(v===viejo)ALIAS.set(k,nuevoN)});if(STATE.C&&STATE.C.n===viejo)STATE.C.n=nuevoN;
+ SOC.sort((a,b)=>a.n.localeCompare(b.n))}
+function editar(n){const s=BYN.get(n);
+ modal(`<div class="sheet-h"><div><h2 style="font-size:26px">Editar datos · ${s.n}</h2><p class="sub" style="margin-top:4px">Los cambios se ven en todas las secciones.</p></div><button class="btn ghost sm" data-x>Cerrar</button></div>
+ <div class="f3"><div class="field"><label for="e0">N° de socio</label><input class="input" id="e0" value="${esc(s.n)}"></div><div class="field"><label for="e1">Nombre y apellido *</label><input class="input" id="e1" value="${esc(s.nom)}"></div><div class="field"><label for="e3">DNI</label><input class="input" id="e3" inputmode="numeric" value="${esc(s.dni||"")}"></div></div>
+ <div class="f3"><div class="field"><label for="e4">Fecha de nacimiento</label><input class="input" id="e4" type="date" value="${s.nac?isoStr(s.nac):""}"></div><div class="field"><span class="lbl">Género</span><div class="seg" id="esx"><button aria-pressed="${s.gen==="Masculino"}" data-g="Masculino">Masculino</button><button aria-pressed="${s.gen==="Femenino"}" data-g="Femenino">Femenino</button></div></div><div class="field"><label for="e6">Teléfono</label><input class="input" id="e6" inputmode="tel" value="${esc(s.tel||"")}"></div></div>
+ <div class="f3"><div class="field"><label for="e7">Email</label><input class="input" id="e7" type="email" value="${esc(s.mail||"")}"></div><div class="field"><label for="e8">Domicilio</label><input class="input" id="e8" value="${esc(s.dir||"")}"></div><div class="field"><label for="e9">Contacto de emergencia</label><input class="input" id="e9" value="${esc(s.emer||"")}"></div></div>
+ <div class="f3"><div class="field"><label for="e10">Tel. de emergencia</label><input class="input" id="e10" inputmode="tel" value="${esc(s.temer||"")}"></div><div class="field"><span class="lbl">Plan</span><div class="seg" id="epl"><button aria-pressed="${s.plan!=="Personalizado"}" data-p="Básico">Básico</button><button aria-pressed="${s.plan==="Personalizado"}" data-p="Personalizado">Personalizado</button></div></div></div>
+ <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:6px"><button class="btn" id="eok">Guardar cambios</button><button class="btn ghost" data-x>Cancelar</button></div>`,true);
+ let g=s.gen,pl=s.plan;
+ $$("#esx button").forEach(b=>b.onclick=()=>{g=g===b.dataset.g?"":b.dataset.g;$$("#esx button").forEach(x=>x.setAttribute("aria-pressed",x.dataset.g===g))});
+ $$("#epl button").forEach(b=>b.onclick=()=>{pl=b.dataset.p;$$("#epl button").forEach(x=>x.setAttribute("aria-pressed",x===b))});
+ $("#eok").onclick=()=>{const nom=$("#e1").value.trim().replace(/\s+/g," ");if(!nom){toast("El nombre no puede quedar vacío");return}
+  let num=$("#e0").value.trim().toUpperCase().replace(/\s+/g,"");if(/^\d+$/.test(num))num="AWG"+num.padStart(3,"0");
+  if(!/^AWG\d{3,}$/.test(num)){toast("El N° de socio tiene que ser AWG y números (ej. AWG450)");return}
+  if(num!==s.n){const otro=BYN.get(num);if(otro){toast(`El ${num} ya es de ${otro.nom}`);return}
+   if(!confirm(`¿Cambiar el N° de socio de ${s.nom} de ${s.n} a ${num}?\n\nSe cambia también en sus pagos, ingresos y transferencias.`))return;renumerar(s.n,num)}
+  s.raw=nom.toUpperCase();s.nom=title(nom);s.dni=$("#e3").value.replace(/\D/g,"");s.tel=$("#e6").value.replace(/\D/g,"");s.mail=$("#e7").value.trim().toLowerCase();
+  s.dir=$("#e8").value.trim();s.emer=$("#e9").value.trim();s.temer=$("#e10").value.replace(/\D/g,"");s.nac=$("#e4").value?iso($("#e4").value):null;s.gen=g;s.plan=pl;
+  reidentificar();close();toast(`Datos de ${s.nom} guardados`);render(true);ficha(s.n)}}
 function nuevo(pre={}){const num=nextNum();
  modal(`<div class="sheet-h"><div><h2 style="font-size:26px">Nuevo socio · ${num}</h2><p class="sub" style="margin-top:4px">${pre.trf?"Nombre y DNI vienen de la transferencia. ":""}Con * es obligatorio.</p></div><button class="btn ghost sm" data-x>Cerrar</button></div>
  <div class="fsec">Datos personales</div>
