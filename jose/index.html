@@ -175,7 +175,7 @@ details summary{color:var(--muted)}
    Copia de seguridad: Ajustes → Guardar copia / Recuperar copia. */
 const KEY="jose_v1";
 const CATS_G=[["super","🛒","Supermercado"],["casa","💡","Luz, gas, agua"],["internet","📶","Internet y celular"],["auto","⛽","Auto y nafta"],["salud","💊","Salud"],["comida","🍽️","Comida afuera"],["tarjeta","💳","Tarjeta"],["prestamo","🏦","Préstamos y planes"],["dpto","🏢","Depto Bs As"],["impuestos","🧾","Impuestos"],["familia","👨‍👩‍👦","Hijos y familia"],["legal","⚖️","Abogados"],["negocio","🏫","Instituto y gym"],["ropa","👕","Ropa"],["casa2","🛠️","Arreglos casa"],["ocio","🎉","Salidas"],["mascota","🐶","Mascotas"],["otros","📦","Otros"]];
-const CATS_I=[["sueldo","💼","Sueldo"],["gym","🏋️","Gimnasio"],["extra","➕","Extras"],["otros_i","💵","Otros"]];
+const CATS_I=[["gym","🏋️","Gimnasio"],["sueldo","💼","Sueldo / jubilación"],["extra","➕","Extras"],["otros_i","💵","Otros"]];
 const MEDIOS=["Efectivo","Débito","Crédito","Mercado Pago","Transferencia"];
 const CAT={};CATS_G.concat(CATS_I).forEach(c=>CAT[c[0]]={e:c[1],n:c[2]});
 const cn=k=>(CAT[k]||CAT.otros).n,ce=k=>(CAT[k]||CAT.otros).e;
@@ -206,7 +206,9 @@ const pct=(a,b)=>b?Math.round(a/b*100):0;
 
 /* ===== Cálculos ===== */
 const movMes=m=>DB.mov.filter(x=>mesDe(x.f)===m);
-function tot(m){let g=0,i=0;movMes(m).forEach(x=>x.t==="i"?i+=x.m:g+=x.m);return{g,i,q:i-g}}
+/* lo que entra = lo que cobra el gym (Facturación del sistema del gym), salvo que ese mes se haya cargado a mano un ingreso "Gimnasio" */
+const gymMes=m=>movMes(m).some(x=>x.t==="i"&&x.cat==="gym")?0:Math.round((DB.gym||{})[m]||0);
+function tot(m){let g=0,i=gymMes(m);movMes(m).forEach(x=>x.t==="i"?i+=x.m:g+=x.m);return{g,i,q:i-g,gym:gymMes(m)}}
 function porCat(m){const r={};movMes(m).filter(x=>x.t==="g").forEach(x=>r[x.cat]=(r[x.cat]||0)+x.m);return Object.entries(r).sort((a,b)=>b[1]-a[1])}
 function fijosMes(m){return DB.fijos.filter(f=>!f.hasta||m<=f.hasta).map(f=>({...f,pag:(DB.pagos[m]||{})[f.id]}))}
 const totDeuda=()=>DB.deudas.reduce((a,d)=>a+d.m,0);
@@ -256,13 +258,13 @@ V.inicio=()=>{
  return`
  <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:14px">${selMes()}<button class="btn" data-nuevo="g">＋ Cargar gasto</button></div>
  <div class="grid g4" style="margin-bottom:14px">
-  <div class="card kpi"><span class="lbl"><i class="dot" style="background:var(--in)"></i>Entró</span><div class="v"><span class="big">${ars(t.i)}</span>${delta(t.i,ant.i,false)}</div><div class="sub">${t.i?"contra "+ars(ant.i)+" en "+mAnt:"Sin ingresos cargados"}</div>${spark(M6.map(x=>x.i),"#16A47F",tp("i"))}</div>
+  <div class="card kpi"><span class="lbl"><i class="dot" style="background:var(--in)"></i>Entró</span><div class="v"><span class="big">${ars(t.i)}</span>${delta(t.i,ant.i,false)}</div><div class="sub">${t.i?(t.gym?"del gym · ":"")+"contra "+ars(ant.i)+" en "+mAnt:"Lo que cobra el gym"}</div>${spark(M6.map(x=>x.i),"#16A47F",tp("i"))}</div>
   <div class="card kpi"><span class="lbl"><i class="dot" style="background:var(--out)"></i>Gasté</span><div class="v"><span class="big">${ars(t.g)}</span>${delta(t.g,ant.g,true)}</div><div class="sub">contra ${ars(ant.g)} en ${mAnt}</div>${spark(M6.map(x=>x.g),"#E5603A",tp("g"))}</div>
   <div class="card kpi"><span class="lbl"><i class="dot" style="background:var(--brand)"></i>Me quedó</span><div class="v"><span class="big ${t.q<0?"out":""}">${ars(t.q)}</span></div><div class="sub">${t.i?"Ahorré el "+Math.max(0,pct(t.q,t.i))+"% de lo que entró":"Falta cargar lo que entra"}</div>${spark(M6.map(x=>Math.max(0,x.q)),"#8B5CF6",tp("q"))}</div>
   <div class="card kpi"><span class="lbl"><i class="dot" style="background:var(--warn)"></i>Falta pagar</span><div class="v"><span class="big">${ars(falta)}</span></div><div class="sub">${pend.length} fijos del mes${DB.deudas.length?" + "+DB.deudas.length+" atrasados":""}</div><div style="padding:10px 0 16px"><button class="btn sec sm full" data-ir="fijos">Ver qué falta</button></div></div>
  </div>
  <div class="layout"><div>
- ${!t.i&&t.g?`<div class="aviso"><span class="e">💼</span><div><b>Falta cargar lo que entra</b><div class="sm">Anotá el sueldo o jubilación y lo que te deja el gym para saber cuánto te queda.</div></div><button class="btn sm green" data-nuevo="i" style="margin-left:auto">Cargar</button></div>`:""}
+ ${!t.i&&t.g?`<div class="aviso"><span class="e">🏋️</span><div><b>Falta lo que entró del gym</b><div class="sm">${location.protocol==="file:"?"Se completa solo cuando la plataforma esté publicada (lee la Facturación del sistema del gym).":GYM.estado==="cargando"?"Trayendo lo cobrado en el gym…":"Para traerlo solo, entrá una vez al sistema del gym en esta compu o celu. O cargalo a mano."}</div></div><button class="btn sm green" data-nuevo="i" style="margin-left:auto">Cargar a mano</button></div>`:""}
  ${avisos.join("")}
  ${t.i?`<div class="card"><div style="display:flex;justify-content:space-between;margin-bottom:8px"><b>De cada $100 que entraron, gasté $${Math.min(999,pct(t.g,t.i))}</b></div><div class="bar"><i style="width:${Math.min(100,pct(t.g,t.i))}%;background:${t.g>t.i?"var(--out)":t.g>t.i*.85?"var(--warn)":"var(--in)"}"></i></div>${proyec?`<div class="sm mut" style="margin-top:8px">A este ritmo, a fin de mes vas a gastar unos <b>${ars(proyec)}</b>.</div>`:""}</div>`:""}
  <div class="grid g2">
@@ -275,7 +277,7 @@ V.inicio=()=>{
   ${ult.length?ult.map(filaMov).join(""):`<div class="empty">Tocá <b>＋</b> para cargar tu primer gasto.<br><br>¿Tenés una copia guardada? <button class="btn sec sm" data-ir="ajustes">📂 Recuperar copia</button></div>`}</div>
  </div>
  <aside><div class="card"><h2 style="margin-bottom:4px">Desglose</h2><p class="sm mut" style="margin:0 0 12px">De lo que entró a lo que te quedó en ${MESES[+m.slice(5)-1].toLowerCase()}.</p>
-  <div class="desg"><div class="ln h"><span>Entró</span><b class="in">${ars(t.i)}</b></div>
+  <div class="desg"><div class="ln h"><span>Entró${t.gym&&t.gym===t.i?" (gym)":""}</span><b class="in">${ars(t.i)}</b></div>${t.gym&&t.gym!==t.i?`<div class="ln"><span>🏋️ Gym</span><b>${ars(t.gym)}</b></div><div class="ln"><span>Otros ingresos</span><b>${ars(t.i-t.gym)}</b></div>`:""}
   ${todas.map(([c,v])=>`<div class="ln"><span>${ce(c)} ${cn(c)}</span><b>-${ars(v).replace("-","")}</b></div>`).join("")}
   <div class="ln h"><span>Me quedó</span><b class="${t.q<0?"out":"in"}">${ars(t.q)}</b></div></div>
   ${DB.deudas.length?`<div class="sm mut" style="margin-top:12px">Además tenés <b class="out">${ars(totDeuda())}</b> sin pagar de meses anteriores.</div>`:""}</div></aside>
@@ -413,11 +415,21 @@ V.mp=()=>{
  <div class="sm mut" style="margin-top:8px">Ya anotaste ${ya} pagos de Mercado Pago.</div></div>
  ${MP.pagos?`<div class="card"><h2 style="margin-bottom:6px">Para anotar (${L.length})</h2>${L.length?L.map(p=>`<div class="row"><div class="ic">💙</div><div class="tx"><b>${esc(p.desc||p.nombre||"Pago con Mercado Pago")}</b><small>${fCorta(p.fecha.slice(0,10))} · ${esc(p.metodo||"")}</small></div><div style="text-align:right"><div class="am out">${ars(p.monto)}</div><div style="display:flex;gap:6px;margin-top:6px"><button class="btn sm" data-mpok="${p.id}">Anotar</button><button class="btn sec sm" data-mpno="${p.id}" title="No es un gasto mío (por ejemplo, es del gym)">No</button></div></div></div>`).join(""):`<div class="empty">✅ No hay pagos nuevos para anotar.</div>`}</div>`:""}`};
 
+let SBC=null;
+async function sesionGym(){if(!window.supabase)await cargarJS("../lib/supabase.min.js");
+ SBC=SBC||supabase.createClient("https://xbujsjsavlvsriiwqajv.supabase.co","sb_publishable_dtF1D0BitTNQYNRWXEBh4Q__ENTmpzQ");
+ const{data}=await SBC.auth.getSession();return data&&data.session?data.session.access_token:null}
+/* Trae los cobros del gym (colección "cob": efectivo + transferencia) y los suma por mes. Solo lee. */
+let GYM={estado:""};
+async function gymTraer(aviso){if(location.protocol==="file:")return;GYM.estado="cargando";
+ try{if(!(await sesionGym())){GYM.estado="sin";if(aviso)render(true);return}
+  const por={};for(let i=0;;i+=1000){const q=await SBC.from("registros").select("data").eq("col","cob").range(i,i+999);if(q.error)throw q.error;
+   q.data.forEach(r=>{const c=r.data||{},f=String(c.f||"").slice(0,7),v=(+c.ef||0)+(+c.tr||0);if(f&&v)por[f]=(por[f]||0)+v});if(q.data.length<1000)break}
+  const cambio=JSON.stringify(por)!==JSON.stringify(DB.gym||{});DB.gym=por;DB.gymAct=new Date().toISOString();guardar();GYM.estado="ok";if(cambio||aviso)render(true);if(aviso)toast("✓ Actualizado con lo del gym")}
+ catch(x){console.error(x);GYM.estado="error";if(aviso)toast("No se pudo traer lo del gym")}}
 async function mpTraer(){MP={estado:"cargando",pagos:null,err:""};render();
  try{
-  if(!window.supabase)await cargarJS("../lib/supabase.min.js");
-  const sb=supabase.createClient("https://xbujsjsavlvsriiwqajv.supabase.co","sb_publishable_dtF1D0BitTNQYNRWXEBh4Q__ENTmpzQ");
-  const{data}=await sb.auth.getSession();const tok=data&&data.session&&data.session.access_token;
+  const tok=await sesionGym();
   if(!tok)throw new Error("Mercado Pago todavía no está conectado en este dispositivo");
   const r=await fetch("../api/mp?dias=62",{headers:{Authorization:"Bearer "+tok}});
   if(!r.ok)throw new Error(r.status===401?"Se venció la conexión con Mercado Pago":"Mercado Pago no respondió ("+r.status+")");
@@ -431,6 +443,8 @@ V.ajustes=()=>`
  <div class="card"><h2 style="margin-bottom:10px">Tu nombre</h2><input class="input" id="anom" value="${esc(DB.nombre)}"></div>
  <div class="card"><h2 style="margin-bottom:4px">Topes por mes</h2><p class="mut sm" style="margin-top:0">Poné cuánto querés gastar como máximo en cada cosa. Te aviso cuando te acercás.</p>
   ${CATS_G.map(([k,e,n])=>`<div class="row"><div class="ic">${e}</div><div class="tx"><b>${n}</b></div><input class="input" style="max-width:170px;text-align:right" data-pres="${k}" inputmode="numeric" placeholder="Sin tope" value="${DB.pres[k]?ars(DB.pres[k]):""}"></div>`).join("")}</div>
+ <div class="card"><h2 style="margin-bottom:4px">🏋️ Lo que entra del gym</h2><p class="mut sm" style="margin-top:0">"Entró" se llena solo con lo cobrado en el gym (lo mismo que Facturación). Si un mes cargás a mano un ingreso "Gimnasio", se usa ese.</p>
+  <button class="btn sec full" id="gymb">🔄 Actualizar con lo del gym</button><div class="sm mut" style="margin-top:8px">${DB.gymAct?"Última vez: "+fCorta(DB.gymAct.slice(0,10))+" "+DB.gymAct.slice(11,16):"Todavía no se trajo."}</div></div>
  <div class="card"><h2 style="margin-bottom:4px">Importar desde Excel</h2><p class="mut sm" style="margin-top:0">Si tenés tus gastos en un Excel (con columnas de fecha, detalle y monto), los cargo de una.</p>
   <input type="file" id="xls" accept=".xlsx,.xls,.csv" class="hide"><button class="btn sec full" id="xlsb">📄 Elegir Excel</button></div>
  <div class="card"><h2 style="margin-bottom:4px">Copia de seguridad</h2><p class="mut sm" style="margin-top:0">Tus datos se guardan en este dispositivo. Guardá una copia de vez en cuando (por ejemplo, mandátela por WhatsApp o mail).</p>
@@ -442,7 +456,7 @@ V.ajustes=()=>`
 V.mas=()=>`<div class="mas">${SECS.filter(s=>!["inicio","movs","metricas"].includes(s[0])).map(([k,e,n])=>`<button data-ir="${k}">${ico(k)}${n}</button>`).join("")}</div>`;
 
 /* ===== Cargar / editar movimiento ===== */
-function form(t,x){x=x||{t,f:hoyS(),cat:t==="i"?"sueldo":"",medio:"Efectivo"};let tipo=x.t;
+function form(t,x){x=x||{t,f:hoyS(),cat:t==="i"?"gym":"",medio:"Efectivo"};let tipo=x.t;
  const draw=()=>{const cats=tipo==="i"?CATS_I:CATS_G;
   modal(`<div class="mhead"><h2>${x.id?"Editar":"Cargar"}</h2><button class="x" data-close aria-label="Cerrar">✕</button></div>
   <div class="seg tipo f"><button class="g ${tipo==="g"?"on":""}" data-t="g">Gasto</button><button class="i ${tipo==="i"?"on":""}" data-t="i">Ingreso</button></div>
@@ -552,7 +566,7 @@ function bind(){
   $("[data-mpok]").forEach(b=>b.onclick=()=>{const p=MP.pagos.find(x=>x.id===b.dataset.mpok);
    form("g",{t:"g",f:p.fecha.slice(0,10),m:Math.round(p.monto),cat:adivinarCat((p.desc||"")+" "+(p.nombre||"")),det:p.desc||p.nombre||"",medio:"Mercado Pago",mp:p.id})});
   $("[data-mpno]").forEach(b=>b.onclick=()=>{DB.mpIgn[b.dataset.mpno]=1;guardar();render(true)})}
- if(sec==="ajustes"){g("anom").onchange=e=>{DB.nombre=e.target.value.trim()||"José";guardar();render(true)};
+ if(sec==="ajustes"){g("gymb").onclick=()=>{if(location.protocol==="file:")return toast("Funciona cuando esté publicada");gymTraer(true).then(()=>{if(GYM.estado==="sin")toast("Entrá una vez al sistema del gym en este dispositivo")})};g("anom").onchange=e=>{DB.nombre=e.target.value.trim()||"José";guardar();render(true)};
   $("[data-pres]").forEach(i=>{i.oninput=()=>{const v=num(i.value);i.value=v?ars(v):""};i.onchange=()=>{const v=num(i.value);if(v)DB.pres[i.dataset.pres]=v;else delete DB.pres[i.dataset.pres];guardar();toast("✓ Tope guardado")}});
   g("xlsb").onclick=()=>g("xls").click();g("xls").onchange=e=>{const f=e.target.files[0];if(f)importarExcel(f);e.target.value=""};
   g("bk").onclick=()=>{const a=document.createElement("a");a.href=URL.createObjectURL(new Blob([JSON.stringify(DB)],{type:"application/json"}));a.download="mis-cuentas-"+hoyS()+".json";a.click();toast("✓ Copia descargada")};
@@ -562,6 +576,8 @@ function bind(){
 }
 function cargarDefaults(){["mov","fijos","deudas"].forEach(k=>DB[k]=DB[k]||[]);["pres","pagos","mpIgn"].forEach(k=>DB[k]=DB[k]||{})}
 render();
+gymTraer(false);
+document.addEventListener("visibilitychange",()=>{if(!document.hidden)gymTraer(false)});
 </script>
 </body>
 </html>
