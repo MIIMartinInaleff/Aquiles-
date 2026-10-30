@@ -22,6 +22,7 @@ Sistema web para administrar el gimnasio. Lo usan Martín (dueño), José y Lour
 | `api/mp.js` | Función serverless de Vercel: lee los cobros/pagos de Mercado Pago. |
 | `lib/supabase.min.js` | supabase-js 2.45.4 (servido desde el mismo dominio, no CDN, para evitar bloqueadores). |
 | `lib/xlsx.full.min.js` | SheetJS 0.18.5. Se carga **solo cuando se exporta un Excel** (no al entrar). |
+| `jose/` | **Otra plataforma:** finanzas personales de José ("Mis Cuentas"). Archivo único, datos en el dispositivo. Ver `jose/README.md`. Todavía sin publicar. |
 | `marketing/cartilla/` | Cartilla de precios para imprimir (frente y dorso), con precios, reglas del Plan Amigo y cómo se generó (Kie, GPT Image 2). Ver su `README.md`. |
 
 ### Cómo hacer un cambio
