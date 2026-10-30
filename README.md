@@ -80,6 +80,7 @@ PK `(col, id)`. RLS: solo `authenticated`. Está en la publicación de realtime.
 - `render(keep)` dibuja la sección actual (`cur`) y llama `bind()`, que engancha los eventos por sección (`if(cur==="socios"){...}`).
 - `ficha(n)` = modal con los datos del socio. `modal()`, `close()`, `toast()`.
 - `editar(n)` = "Editar datos" en la ficha (N°, nombre, DNI, teléfono, etc.). Si cambia el N°, `renumerar()` lo cambia en `BYN`, cobros, ingresos, transferencias, avisos y `ALIAS`; la sincronización borra la fila `soc` vieja y crea la nueva.
+- Novedades del socio: `s.nov` = lista de `{id, tipo:"amigo"|"nota", txt, cant, f}` + `s.favor`. Se anotan desde la ficha ("Anotar novedad") o al dar de alta un socio ("¿Lo trajo un socio?" → Plan Amigo para el que lo trajo). En Cobrar aparece un cartel grande (`novCartel()`); Plan Amigo (`amigoUsado()`, `PRECIO_AMIGO` = $40.000) se aplica solo a la cuota y descuenta 1 por cobro; las notas se cierran con "Resuelto". En Check-in sale la etiqueta "📌 Tiene novedad".
 - Saldo a favor: campo `s.favor` del socio; `favorUsado()` lo descuenta de la próxima cuota en Cobrar (botón "No descontar") y se borra al guardar.
 - Menú: `SECS` (lista de secciones), `side()` (menú lateral en PC, barra abajo en celular).
 

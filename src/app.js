@@ -192,7 +192,7 @@ V.inicio=()=>{const late=SOC.filter(s=>est(s)==="late").sort((a,b)=>b.venc-a.ven
  <section class="box"><div class="h2row"><h2>Vencen esta semana</h2><span class="count">${warn.length}</span></div>${warn.slice(0,5).map(rowS).join("")||'<p class="count">Nadie vence esta semana.</p>'}${warn.length>5?`<button class="more" data-filtro="warn">Ver los ${warn.length} →</button>`:""}</section></div>`};
 V.checkin=()=>{const R=buscar(STATE.ciq,8);
  const hits=R.map(s=>{const e=est(s),bad=e==="late"||e==="off",hoy=INGRESOS.filter(i=>i.n===s.n&&diffD(TODAY(),i.t)===0).sort((a,b)=>b.t-a.t)[0];
-  return`<div class="ci-hit${bad?" bad":""}${hoy?" hoy":""}"><div class="n">${hoy?`<span class="ci-ya">✓ Ya ingresó hoy · ${hhmm(hoy.t)}</span>`:""}<b>${esc(s.nom)}</b><div>${s.n} · DNI ${dniFmt(s.dni)} · ${fdias(s)}</div><div style="margin-top:2px">${ultimaVez(s.n)}</div></div>${bad?`<button class="btn ghost" data-cobrar="${s.n}">Cobrar</button><button class="btn ghost" data-reg="${s.n}">Dejar pasar igual</button>`:hoy?`<button class="btn ghost" data-reg="${s.n}">Registrar otra vez</button>`:`<button class="btn" data-reg="${s.n}">Registrar ingreso</button>`}</div>`}).join("");
+  return`<div class="ci-hit${bad?" bad":""}${hoy?" hoy":""}"><div class="n">${hoy?`<span class="ci-ya">✓ Ya ingresó hoy · ${hhmm(hoy.t)}</span>`:""}<b>${esc(s.nom)}</b>${tieneNov(s)?' <span class="nov-tag">📌 Tiene novedad</span>':""}<div>${s.n} · DNI ${dniFmt(s.dni)} · ${fdias(s)}</div><div style="margin-top:2px">${ultimaVez(s.n)}</div></div>${bad?`<button class="btn ghost" data-cobrar="${s.n}">Cobrar</button><button class="btn ghost" data-reg="${s.n}">Dejar pasar igual</button>`:hoy?`<button class="btn ghost" data-reg="${s.n}">Registrar otra vez</button>`:`<button class="btn" data-reg="${s.n}">Registrar ingreso</button>`}</div>`}).join("");
  const mes=INGRESOS.filter(i=>i.t.getMonth()===TODAY().getMonth()&&i.t.getFullYear()===TODAY().getFullYear());
  const cnt={};mes.forEach(i=>cnt[i.n]=(cnt[i.n]||0)+1);const rk=Object.entries(cnt).sort((a,b)=>b[1]-a[1]).slice(0,10);
  return`<div class="head"><div><h1>Check-in</h1></div><button class="btn dark" id="qr">Escanear QR</button></div>
@@ -215,10 +215,35 @@ V.socios=()=>{const C={todos:SOC.length,ok:0,warn:0,late:0,off:0};SOC.forEach(s=
  ${L.slice(0,STATE.lim||100).map(s=>`<tr class="click" data-n="${s.n}"><td class="num">${s.n}</td><td>${esc(s.nom)}</td><td class="hide-m">${dniFmt(s.dni)}</td><td class="hide-m">${telFmt(s.tel)||"—"}</td><td class="hide-m">${edad(s)}</td><td>${fmt(s.venc)}</td><td>${pill(s)}</td></tr>`).join("")||'<tr><td colspan="7" class="count">No hay socios con ese filtro.</td></tr>'}</tbody></table></div>
  <p class="count" style="margin-top:10px">Mostrando ${Math.min(L.length,STATE.lim||100)} de ${L.length}${L.length>(STATE.lim||100)?` · <button class="link" id="smas">Mostrar más</button>`:""}</p>`};
 /* saldo a favor del socio (s.favor): se descuenta de la próxima cuota, salvo que se elija no hacerlo */
-const favorUsado=(s,cu,C)=>s&&s.favor>0&&cu&&cu.p&&C.usaFav!==false?Math.min(s.favor,cu.p):0;
+/* novedades del socio (s.nov): {id,tipo:"amigo"|"nota",txt,cant,f}. Plan Amigo: la cuota sale PRECIO_AMIGO */
+const PRECIO_AMIGO=40000;
+const novs=s=>s&&s.nov?s.nov:[];
+const tieneNov=s=>!!s&&(novs(s).length>0||s.favor>0);
+const amigoUsado=(s,cu,C)=>s&&cu&&cu.p>PRECIO_AMIGO&&novs(s).some(x=>x.tipo==="amigo"&&x.cant>0)&&C.usaAmigo!==false?cu.p-PRECIO_AMIGO:0;
+const favorUsado=(s,cu,C)=>s&&s.favor>0&&cu&&cu.p&&C.usaFav!==false?Math.min(s.favor,cu.p-amigoUsado(s,cu,C)):0;
+function novCartel(s,cu,C,am,fav){if(!tieneNov(s))return"";const L=[];
+ novs(s).filter(x=>x.tipo==="amigo"&&x.cant>0).forEach(x=>L.push(`<div class="nov-it"><span class="nov-ic">🤝</span><div><b>PLAN AMIGO${x.txt?` · trajo a ${esc(x.txt)}`:""}</b><div>${am?`Esta cuota sale <b>${ars(PRECIO_AMIGO)}</b>`:cu&&cu.p?"No se aplica en este cobro":"Elegí la cuota y se aplica sola"}${x.cant>1?` · le quedan ${x.cant} cuotas a ${ars(PRECIO_AMIGO)}`:""}</div></div>${cu&&cu.p>PRECIO_AMIGO?`<button class="btn ghost sm" id="cami">${am?"No aplicar":"Aplicar"}</button>`:""}</div>`));
+ if(s.favor>0)L.push(`<div class="nov-it"><span class="nov-ic">💰</span><div><b>TIENE ${ars(s.favor)} A FAVOR</b><div>${fav?`Se descuentan ${ars(fav)} de esta cuota`:cu&&cu.p?"No se descuenta en este cobro":"Se descuenta de la cuota"}</div></div>${cu&&cu.p?`<button class="btn ghost sm" id="cfav">${fav?"No descontar":"Descontar"}</button>`:""}</div>`);
+ novs(s).filter(x=>x.tipo==="nota").forEach(x=>L.push(`<div class="nov-it"><span class="nov-ic">📌</span><div><b>${esc(x.txt)}</b><div>Anotado el ${fmtS(new Date(x.f))}</div></div><button class="btn ghost sm" data-novok="${x.id}">Resuelto</button></div>`));
+ return`<div class="nov-big"><div class="nov-h">⚠️ OJO CON ESTE SOCIO</div>${L.join("")}</div>`}
+function anotarNov(n,after){const s=BYN.get(n);let tipo="amigo";
+ const draw=()=>{modal(`<div class="sheet-h"><div><h2 style="font-size:24px">Anotar novedad</h2><p class="sub" style="margin-top:4px">${esc(s.nom)} · aparece en grande cuando lo vayan a cobrar</p></div><button class="btn ghost sm" data-x>Cerrar</button></div>
+  <div class="seg" style="margin-bottom:16px">${[["amigo","Trajo un amigo"],["favor","Saldo a favor"],["nota","Otra nota"]].map(([k,l])=>`<button data-nt="${k}" aria-pressed="${tipo===k}">${l}</button>`).join("")}</div>
+  ${tipo==="amigo"?`<div class="f2"><div class="field"><label for="na1">¿A quién trajo? (opcional)</label><input class="input" id="na1" placeholder="Nombre del amigo"></div><div class="field"><label for="na2">¿Cuántos amigos?</label><input class="input" id="na2" inputmode="numeric" value="1"></div></div><p class="count">Cada amigo = 1 cuota a ${ars(PRECIO_AMIGO)}.</p>`
+   :tipo==="favor"?`<div class="field"><label for="na3">Monto a favor</label><input class="input" id="na3" inputmode="numeric" placeholder="$2.000"></div>`
+   :`<div class="field"><label for="na4">Nota</label><input class="input" id="na4" placeholder="Ej: debe $5.000 del mes pasado"></div>`}
+  <div style="margin-top:12px"><button class="btn" id="naok">Guardar novedad</button></div>`);
+  $$("[data-nt]").forEach(b=>b.onclick=()=>{tipo=b.dataset.nt;draw()});
+  $("#naok").onclick=()=>{const L=s.nov||(s.nov=[]);
+   if(tipo==="amigo"){const c=Math.max(1,+$("#na2").value.replace(/\D/g,"")||1);L.push({id:nid(),tipo,txt:title($("#na1").value.trim()),cant:c,f:new Date().toISOString()})}
+   else if(tipo==="favor"){const m=+$("#na3").value.replace(/\D/g,"");if(!m){toast("Poné el monto");return}s.favor=(s.favor||0)+m}
+   else{const x=$("#na4").value.trim();if(!x){toast("Escribí la nota");return}L.push({id:nid(),tipo,txt:x,f:new Date().toISOString()})}
+   if(!L.length)delete s.nov;close();toast("Novedad anotada: va a aparecer cuando lo cobren");render(true);(after||ficha)(n)}};
+ draw()}
+const borrarNov=(s,id)=>{s.nov=novs(s).filter(x=>String(x.id)!==String(id));if(!s.nov.length)delete s.nov};
 V.cobrar=()=>{const C=STATE.C||(STATE.C={n:null,q:"",cuota:"normal",q2:{},metodo:"transf",ef:0,venc:"auto",menu:false,nuevo:false});
- const s=C.n?BYN.get(C.n):null,cu=CUOTAS.find(c=>c.k===C.cuota),fav=favorUsado(s,cu,C);
- const tot=(cu?cu.p:0)-fav+PRODS.reduce((a,p)=>a+p.p*(C.q2[p.k]||0),0);
+ const s=C.n?BYN.get(C.n):null,cu=CUOTAS.find(c=>c.k===C.cuota),am=amigoUsado(s,cu,C),fav=favorUsado(s,cu,C);
+ const tot=(cu?cu.p:0)-am-fav+PRODS.reduce((a,p)=>a+p.p*(C.q2[p.k]||0),0);
  const ef=C.metodo==="efectivo"?tot:C.metodo==="transf"?0:Math.min(C.ef,tot),tr=tot-ef;
  const vencida=s&&s.venc&&dias(s)<0, base=s&&s.venc&&!vencida?s.venc:TODAY();
  const mode=C.venc==="auto"?(s&&s.venc&&!vencida?"suyo":"hoy"):C.venc;
@@ -229,7 +254,7 @@ V.cobrar=()=>{const C=STATE.C||(STATE.C={n:null,q:"",cuota:"normal",q2:{},metodo
   <div class="field"><span class="lbl">Socio</span>${s?`<div class="ci-hit" style="margin-top:0"><div class="n"><b>${esc(s.nom)}</b><div>${s.n} · ${s.plan} · ${fdias(s)}</div></div><button class="btn ghost sm" id="cambiar">Cambiar</button></div>`
    :`<input class="input" id="csq" placeholder="Buscá por nombre, DNI o N° de socio (vacío = venta sin socio)" value="${esc(C.q)}" autocomplete="off">${R.map(x=>`<div class="row" data-pick="${x.n}"><div class="n"><strong>${esc(x.nom)}</strong><span>${x.n} · ${fdias(x)}</span></div>${pill(x)}</div>`).join("")}${R.length?masRes(8):""}`}</div>
   ${s&&TRF.some(t=>t.estado==="pend"&&t.n===s.n)?TRF.filter(t=>t.estado==="pend"&&t.n===s.n).map(t=>`<button class="alert" data-usetrf="${t.id}" style="margin-top:-4px"><span style="color:var(--ink);font-weight:500"><b>Ya transfirió ${ars(t.monto)}</b> ${diffD(TODAY(),t.h)===0?"hoy":diffD(TODAY(),t.h)===1?"ayer":"el "+fmtS(t.h)} a las ${hhmm(t.h)} (${esc(t.origen)})</span><span>Usar esa transferencia →</span></button>`).join(""):""}
-  ${s&&s.favor>0&&cu&&cu.p?`<div class="alert" style="margin-top:-4px;cursor:default"><span style="color:var(--ink);font-weight:500"><b>Tiene ${ars(s.favor)} a favor</b> · ${fav?`se descuenta de esta cuota`:`no se descuenta esta vez`}</span><button class="btn ghost sm" id="cfav">${fav?"No descontar":"Descontar"}</button></div>`:""}
+  ${novCartel(s,cu,C,am,fav)}
   <div class="field"><span class="lbl">Cuota</span><div class="chips" style="margin:0">${[...CUOTAS.map(c=>[c.k,c.n.replace("Cuota ","").replace(/^./,x=>x.toUpperCase()),c.p?ars(c.p):"$0"]),["no","Sin cuota","Solo productos"]].map(([k,l,p])=>`<button class="chip" data-c="${k}" aria-pressed="${C.cuota===k}">${l}<small>${p}</small></button>`).join("")}</div></div>
   <div class="field"><span class="lbl">Productos</span>
    ${PRODS.filter(p=>C.q2[p.k]).length?`<div class="box" style="padding:4px 16px;margin-bottom:10px">${PRODS.filter(p=>C.q2[p.k]).map(p=>`<div class="prod"><div class="n"><strong>${esc(p.n)}</strong><span>${ars(p.p)} c/u</span></div><div class="qty"><button data-m="${p.k}" aria-label="Quitar ${esc(p.n)}">−</button><span>${C.q2[p.k]}</span><button data-p="${p.k}" aria-label="Sumar ${esc(p.n)}">+</button></div></div>`).join("")}</div>`:""}
@@ -238,7 +263,7 @@ V.cobrar=()=>{const C=STATE.C||(STATE.C={n:null,q:"",cuota:"normal",q2:{},metodo
     ${C.nuevo?`<div class="newp"><div><label for="np1" style="font-size:12px">Nombre</label><input class="input" id="np1" placeholder="Ej: Guantes"></div><div><label for="np2" style="font-size:12px">Precio</label><input class="input" id="np2" inputmode="numeric" placeholder="$"></div><button class="btn sm" id="npok">Agregar</button></div>`:`<button class="it" role="menuitem" id="np" style="color:var(--acc)">+ Producto nuevo…</button>`}</div>`:""}</div></div>
  </div>
  <div class="box"><h2 style="margin-bottom:10px">Resumen</h2>
-  ${cu?`<div class="line"><span>${cu.n}</span><span>${ars(cu.p)}</span></div>`:""}${fav?`<div class="line"><span>Saldo a favor</span><span style="color:var(--ok)">−${ars(fav)}</span></div>`:""}
+  ${cu?`<div class="line"><span>${cu.n}</span><span>${ars(cu.p)}</span></div>`:""}${am?`<div class="line"><span>Plan Amigo</span><span style="color:var(--ok)">−${ars(am)}</span></div>`:""}${fav?`<div class="line"><span>Saldo a favor</span><span style="color:var(--ok)">−${ars(fav)}</span></div>`:""}
   ${PRODS.filter(p=>C.q2[p.k]).map(p=>`<div class="line"><span>${esc(p.n)} × ${C.q2[p.k]}</span><span>${ars(p.p*C.q2[p.k])}</span></div>`).join("")}
   <div class="total"><span>Total</span><b>${ars(tot)}</b></div>
   <div class="field" style="margin-top:14px"><label for="cfecha">Fecha de pago <small>${C.fecha&&C.fecha!==isoStr(TODAY())?"· cargado después":"· hoy"}</small></label><input class="input" type="date" id="cfecha" value="${C.fecha||isoStr(TODAY())}" max="${isoStr(addD(TODAY(),30))}"></div>
@@ -460,15 +485,18 @@ function corregir(id){const c=COB.find(x=>String(x.id)===String(id));if(!c)retur
    close();const s=c.n?BYN.get(c.n):null;toast(`Cobro corregido${s&&esCuota(c)?` · ${s.nom.split(" ")[0]} vence el ${fmt(s.venc)}`:""}`);render(true)};
  };draw()}
 function ficha(n){const s=BYN.get(n),pg=COB.filter(c=>c.n===n).sort((a,b)=>b.id-a.id),ing=INGRESOS.filter(i=>i.n===n).slice(0,5);
- const kv=[["DNI",dniFmt(s.dni)],["Teléfono",telFmt(s.tel)||"—"],["Email",s.mail||"—"],["Nacimiento · edad",s.nac?`${fmt(s.nac)} · ${edad(s)} años`:"—"],["Género",s.gen||"—"],["Domicilio",s.dir||"—"],["Plan",s.plan],["Último pago",fmt(s.ult)],...(s.favor>0?[["Saldo a favor",ars(s.favor)+" · se descuenta en el próximo cobro"]]:[])];
+ const kv=[["DNI",dniFmt(s.dni)],["Teléfono",telFmt(s.tel)||"—"],["Email",s.mail||"—"],["Nacimiento · edad",s.nac?`${fmt(s.nac)} · ${edad(s)} años`:"—"],["Género",s.gen||"—"],["Domicilio",s.dir||"—"],["Plan",s.plan],["Último pago",fmt(s.ult)]];
  modal(`<div class="sheet-h"><div><span class="num">${s.n}</span><h2 style="font-size:26px;margin:2px 0 8px">${esc(s.nom)}</h2>${pill(s)} <span class="count" style="margin-left:6px">${fdias(s)}</span></div><button class="btn ghost sm" data-x>Cerrar</button></div>
- <div class="actions"><button class="btn" id="fc">Cobrar</button><button class="btn ghost" id="fi">Ingreso</button><button class="btn ghost" id="fed">Editar datos</button><button class="btn ghost" id="fx">Cerrar</button></div>
+ <div class="actions"><button class="btn" id="fc">Cobrar</button><button class="btn ghost" id="fi">Ingreso</button><button class="btn ghost" id="fnov">Anotar novedad</button><button class="btn ghost" id="fed">Editar datos</button><button class="btn ghost" id="fx">Cerrar</button></div>
  <div class="kv">${kv.map(([k,v])=>`<div><small>${k}</small><span style="word-break:break-word">${esc(v)}${k==="Teléfono"&&s.tel?` <a class="btn wa sm" href="${waLink(s)}" target="_blank" rel="noopener" style="margin-left:8px;vertical-align:middle;padding:5px 12px;font-size:13px">WhatsApp</a>`:""}</span></div>`).join("")}<div style="grid-column:1/-1"><small>Contacto de emergencia</small><span>${esc(s.emer||"—")}${s.temer?" · "+telFmt(s.temer):""}</span></div></div>
+ ${tieneNov(s)?`<div class="nov-big" style="margin:0 0 18px"><div class="nov-h">NOVEDADES</div>${novs(s).map(x=>`<div class="nov-it"><span class="nov-ic">${x.tipo==="amigo"?"🤝":"📌"}</span><div><b>${x.tipo==="amigo"?`Plan Amigo${x.txt?` · trajo a ${esc(x.txt)}`:""}`:esc(x.txt)}</b><div>${x.tipo==="amigo"?`${x.cant} cuota${x.cant>1?"s":""} a ${ars(PRECIO_AMIGO)}`:`Anotado el ${fmtS(new Date(x.f))}`}</div></div><button class="btn ghost sm" data-novdel="${x.id}">Quitar</button></div>`).join("")}${s.favor>0?`<div class="nov-it"><span class="nov-ic">💰</span><div><b>${ars(s.favor)} a favor</b><div>Se descuenta en el próximo cobro</div></div><button class="btn ghost sm" data-novdel="favor">Quitar</button></div>`:""}</div>`:""}
  <h2 style="margin-bottom:4px">Pagos desde julio</h2><div class="hist">${pg.map(c=>`<div><span>${fmt(c.f)}${c.h?" · "+hhmm(c.h):""} · ${esc(c.items.map(i=>i.n).join(" + "))}</span><b>${ars(c.ef+c.tr)} · ${c.ef&&c.tr?"Mixto":c.ef?"Efectivo":c.tr?"Transferencia":"Gratis"} <button class="link" data-edcob="${c.id}" style="margin-left:8px">Corregir</button></b></div>`).join("")||'<p class="count">Sin pagos desde julio.</p>'}
  ${ing.map(i=>`<div><span>Ingresó ${fmtS(i.t)} · ${hhmm(i.t)}</span><span></span></div>`).join("")}</div>`);
  $("#fc").onclick=()=>{close();STATE.C=null;go("cobrar");STATE.C.n=n;STATE.C.cuota=s.plan==="Personalizado"?"pers":"normal";render()};
  $("#fi").onclick=()=>{close();registrar(s)};
  $("#fed").onclick=()=>editar(n);
+ $("#fnov").onclick=()=>anotarNov(n);
+ $$("[data-novdel]").forEach(b=>b.onclick=()=>{if(b.dataset.novdel==="favor")delete s.favor;else borrarNov(s,b.dataset.novdel);toast("Novedad quitada");render(true);ficha(n)});
  $$("#modal [data-edcob]").forEach(b=>b.onclick=()=>corregir(b.dataset.edcob));$("#fx").onclick=close}
 /* editar datos del socio; si cambia el N°, se cambia en cobros, ingresos, transferencias y avisos */
 function renumerar(viejo,nuevoN){const s=BYN.get(viejo);s.n=nuevoN;BYN.delete(viejo);BYN.set(nuevoN,s);
@@ -499,14 +527,19 @@ function nuevo(pre={}){const num=nextNum();
  <div class="f3"><div class="field"><label for="n1">Nombre y apellido *</label><input class="input" id="n1" value="${esc(pre.nom||"")}"></div><div class="field"><label for="n3">DNI *</label><input class="input" id="n3" inputmode="numeric" value="${esc(pre.dni||"")}"></div><div class="field"><label for="n4">Fecha de nacimiento</label><input class="input" id="n4" type="date"></div></div>
  <div class="f3"><div class="field"><span class="lbl">Género</span><div class="seg" id="sx"><button aria-pressed="false" data-g="M">Masculino</button><button aria-pressed="false" data-g="F">Femenino</button></div></div><div class="field"><label for="n6">Teléfono *</label><input class="input" id="n6" inputmode="tel" placeholder="297 400-0000"></div><div class="field"><label for="n7">Email</label><input class="input" id="n7" type="email"></div></div>
  <div class="f3"><div class="field"><label for="n8">Domicilio</label><input class="input" id="n8"></div><div class="field"><label for="n9">Contacto de emergencia</label><input class="input" id="n9" placeholder="Nombre (vínculo)"></div><div class="field"><label for="n10">Tel. de emergencia</label><input class="input" id="n10" inputmode="tel"></div></div>
+ <div class="f3"><div class="field"><label for="n11">¿Lo trajo un socio? (N° de socio)</label><input class="input" id="n11" placeholder="Ej: 450 · Plan Amigo"></div></div>
  <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:6px">${pre.trf?`<button class="btn" id="ins">Inscribir y registrar la transferencia de ${ars(pre.trf.monto)}</button>`:`<button class="btn" id="ins">Inscribir y cobrar</button><button class="btn ghost" id="ins2">Solo inscribir</button>`}</div>`,true);
  let g="";$$("#sx button").forEach(b=>b.onclick=()=>{g=b.dataset.g;$$("#sx button").forEach(x=>x.setAttribute("aria-pressed",x===b))});
  const save=cobrar=>{const nom=$("#n1").value.trim(),dni=$("#n3").value.replace(/\D/g,""),tel=$("#n6").value.replace(/\D/g,"");
   if(!nom||!dni||!tel){toast("Completá nombre, DNI y teléfono");return}
+  let rn=$("#n11").value.trim().toUpperCase().replace(/\s+/g,"");if(/^\d+$/.test(rn))rn="AWG"+rn.padStart(3,"0");const ref=rn?BYN.get(rn):null;
+  if(rn&&!ref){toast(`No encontré al socio ${rn} que lo trajo`);return}
   const s={n:num,raw:nom.toUpperCase(),nom:title(nom),nac:$("#n4").value?iso($("#n4").value):null,dni,gen:g==="M"?"Masculino":g==="F"?"Femenino":"",tel,dir:title($("#n8").value.trim()),mail:$("#n7").value.trim().toLowerCase(),emer:title($("#n9").value.trim()),temer:$("#n10").value.replace(/\D/g,""),plan:"Básico",venc:null,ult:null,nuevo:true};
   SOC.push(s);BYN.set(num,s);close();if(!pre.trf)reidentificar();
+  if(ref){(ref.nov=ref.nov||[]).push({id:nid(),tipo:"amigo",txt:s.nom,cant:1,f:new Date().toISOString()});}
+  const refMsg=ref?` · Plan Amigo anotado a ${ref.nom.split(" ")[0]}`:"";
   if(pre.trf){if(pre.trf.cuil)ALIAS.set(pre.trf.cuil,num);cobrarTrf(pre.trf,s);toast(`${s.nom} inscripto como ${num} y transferencia registrada`);render(true);return}
-  if(cobrar){STATE.C=null;go("cobrar");STATE.C.n=num;render()}else{toast(`${s.nom} inscripto como ${num}`);render(true)}};
+  if(cobrar){STATE.C=null;go("cobrar");STATE.C.n=num;render();if(refMsg)toast(`${s.nom} inscripto como ${num}${refMsg}`)}else{toast(`${s.nom} inscripto como ${num}${refMsg}`);render(true)}};
  $("#ins").onclick=()=>save(true);if($("#ins2"))$("#ins2").onclick=()=>save(false)}
 
 function elegirSocio(t){let q="";const draw=()=>{const R=buscar(q,6);$("#esr").innerHTML=R.map(x=>`<div class="row" data-es="${x.n}"><div class="n"><strong>${esc(x.nom)}</strong><span>${x.n} · ${fdias(x)}</span></div>${pill(x)}</div>`).join("")||(q?'<p class="count">No encontré a nadie.</p>':"");
@@ -549,15 +582,18 @@ function bind(){
   if($("#npok"))$("#npok").onclick=()=>{const n=$("#np1").value.trim(),v=+$("#np2").value.replace(/\D/g,"");if(!n||!v){toast("Poné el nombre y el precio");return}
    const k="p"+Date.now();PRODS.push({k,n,p:v});C.q2[k]=1;C.menu=false;C.nuevo=false;render(true);toast(`${n} agregado a la lista de productos`)};
   if($("#cfav"))$("#cfav").onclick=()=>{C.usaFav=C.usaFav===false;render(true)};
+  if($("#cami"))$("#cami").onclick=()=>{C.usaAmigo=C.usaAmigo===false;render(true)};
+  $$("[data-novok]").forEach(b=>b.onclick=()=>{const s=BYN.get(C.n);borrarNov(s,b.dataset.novok);toast("Novedad marcada como resuelta");render(true)});
   if($("#cef"))$("#cef").onchange=e=>{C.ef=+e.target.value.replace(/\D/g,"")||0;render(true)};
   $("#guardar").onclick=()=>{const s=C.n?BYN.get(C.n):null,cu=CUOTAS.find(c=>c.k===C.cuota);
-   const fav=favorUsado(s,cu,C),items=[];if(cu)items.push({n:fav?`${cu.n} (−${ars(fav)} a favor)`:cu.n,p:cu.p-fav,cat:cu.k==="gratis"?"gratis":"cuota"});PRODS.forEach(p=>{for(let i=0;i<(C.q2[p.k]||0);i++)items.push({n:p.n,p:p.p,cat:"prod"})});
+   const am=amigoUsado(s,cu,C),fav=favorUsado(s,cu,C),items=[];if(cu)items.push({n:cu.n+(am?" · Plan Amigo":"")+(fav?` (−${ars(fav)} a favor)`:""),p:cu.p-am-fav,cat:cu.k==="gratis"?"gratis":"cuota"});PRODS.forEach(p=>{for(let i=0;i<(C.q2[p.k]||0);i++)items.push({n:p.n,p:p.p,cat:"prod"})});
    const tot=items.reduce((a,i)=>a+i.p,0),ef=C.metodo==="efectivo"?tot:C.metodo==="transf"?0:Math.min(C.ef,tot),now=new Date();
    const fp=C.fecha?iso(C.fecha):TODAY();
    // aviso si ya se confirmó una transferencia de Mercado Pago igual para este socio
    const yaMP=s&&tot-ef>0&&COB.find(c=>c.trf&&c.n===s.n&&c.tr===tot-ef&&Math.abs(diffD(c.f,fp))<=3);
    if(yaMP&&!confirm(`${s.nom} ya tiene un cobro de ${ars(yaMP.tr)} confirmado desde Transferencias el ${fmtS(yaMP.f)}.\n\n¿Es otro pago distinto? Aceptar = cargar igual · Cancelar = no cargar`))return;
    const cob={id:nid(),n:s?s.n:null,f:fp,h:now,items,ef,tr:tot-ef};COB.push(cob);if(fav){s.favor-=fav;if(!s.favor)delete s.favor}
+   if(am){const x=novs(s).find(x=>x.tipo==="amigo"&&x.cant>0);x.cant--;if(!x.cant)borrarNov(s,x.id)}
    let dupMsg="";if(s&&cob.tr>0){const t=TRF.find(t=>t.estado==="pend"&&t.n===s.n&&t.monto===cob.tr);if(t){t.estado="manual";t.cob=cob;cob.linked=true;dupMsg=` · La transferencia de ${title(t.nombre)} quedó marcada como ya cobrada`}}
    if(s&&cu){const vencida=s.venc&&dias(s)<0,mode=C.venc==="auto"?(s.venc&&!vencida?"suyo":"hoy"):C.venc;const vs=s.venc&&addD(s.venc,30);s.venc=mode==="suyo"&&vs&&vs>fp?vs:addD(fp,30);cob.vto=s.venc;if(!s.ult||fp>=s.ult)s.ult=fp}
    toast(`Cobro de ${ars(tot)} guardado a las ${hhmm(now)}${s&&cu?` · ${s.nom.split(" ")[0]} vence el ${fmt(s.venc)}`:""}${dupMsg}`);STATE.C=null;render(true)}}
