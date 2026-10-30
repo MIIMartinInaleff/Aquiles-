@@ -159,17 +159,35 @@ table.t td:first-child,table.t th:first-child{text-align:left}
 .empty{text-align:center;color:var(--muted);padding:24px 10px}
 details summary{color:var(--muted)}
 .hide{display:none!important}
+[hidden]{display:none!important}
+.login{min-height:100vh;display:grid;place-items:center;padding:24px 16px}
+.login-card{width:min(420px,100%);background:var(--card);border:1px solid var(--line);border-radius:20px;padding:30px 26px;box-shadow:0 30px 80px rgba(0,0,0,.6)}
+.login-card .logo{display:flex;align-items:center;gap:10px;font-weight:700;font-size:22px;margin-bottom:6px}
+.login-card .logo i{width:36px;height:36px;border-radius:10px;background:var(--brand);display:grid;place-items:center;font-style:normal;color:#fff}
+.login-card p{color:var(--muted);margin:0 0 20px}
+.login-card .input{font-size:19px;padding:14px 16px}
+.rec{display:flex;align-items:center;gap:10px;font-size:15px;color:var(--muted);margin:14px 0 4px;cursor:pointer}
+.rec input{width:22px;height:22px;accent-color:var(--brand)}
+.login-err{color:var(--outT);font-size:15px;font-weight:600;min-height:22px;margin:8px 0 6px}
 </style>
 </head>
 <body>
-<div class="shell">
+<div class="login" id="login"><form class="login-card" id="lf" autocomplete="on">
+ <div class="logo"><i>$</i>Mis Cuentas</div>
+ <p>Ingresá la contraseña para entrar.</p>
+ <input type="text" name="username" value="jose" autocomplete="username" hidden>
+ <label for="pw" class="lbl">Contraseña</label><input class="input" id="pw" type="password" autocomplete="current-password" required>
+ <label class="rec"><input type="checkbox" id="rec" checked> No pedirla de nuevo en este dispositivo</label>
+ <div class="login-err" id="lerr" role="alert"></div>
+ <button class="btn full" type="submit" id="lbtn">Entrar</button></form></div>
+<div class="shell" id="app" hidden>
  <aside class="side" id="nav"></aside>
  <div class="wrap">
   <div class="top"><div><div class="hola" id="hola"></div><h1 id="tit">Mis Cuentas</h1></div><div id="topr"></div></div>
   <main id="main"></main>
  </div>
 </div>
-<nav class="mbar" id="mbar"></nav>
+<nav class="mbar" id="mbar" hidden></nav>
 <div id="modal"></div><div class="tip" id="tip"></div>
 <script>
 /* ===== Datos =====
@@ -182,11 +200,23 @@ const MEDIOS=["Efectivo","Débito","Crédito","Mercado Pago","Transferencia"];
 const CAT={};CATS_G.concat(CATS_I).forEach(c=>CAT[c[0]]={e:c[1],n:c[2]});
 const cn=k=>(CAT[k]||CAT.otros).n,ce=k=>(CAT[k]||CAT.otros).e;
 let DB;
-function cargar(){try{DB=JSON.parse(localStorage.getItem(KEY)||"null")}catch(e){DB=null}
+/* ===== Contraseña y datos cifrados =====
+   La contraseña no está en el código: CLAVE es "ok" cifrado con ella (se arma con jose/clave.js).
+   Con la misma clave (PBKDF2 → AES-GCM) se cifran los datos guardados en el dispositivo. */
+const CLAVE={"s":"aRyWDOk5pLo/kuLbN+3Qhg==","i":310000,"n":"NQN0kpMxQ2d4FYOm","c":"+2OUksv679xt17FVG4KQsBpp"};
+let KC=null;
+const b64=u=>{let s="";new Uint8Array(u).forEach(c=>s+=String.fromCharCode(c));return btoa(s)},u8=b=>Uint8Array.from(atob(b),c=>c.charCodeAt(0));
+async function derivar(pw){const k0=await crypto.subtle.importKey("raw",new TextEncoder().encode(pw),"PBKDF2",false,["deriveKey"]);
+ return crypto.subtle.deriveKey({name:"PBKDF2",salt:u8(CLAVE.s),iterations:CLAVE.i,hash:"SHA-256"},k0,{name:"AES-GCM",length:256},true,["encrypt","decrypt"])}
+async function abrirCon(k,o){return new TextDecoder().decode(await crypto.subtle.decrypt({name:"AES-GCM",iv:u8(o.n)},k,u8(o.c)))}
+async function cifrar(k,t){const n=crypto.getRandomValues(new Uint8Array(12));return{n:b64(n),c:b64(await crypto.subtle.encrypt({name:"AES-GCM",iv:n},k,new TextEncoder().encode(t)))}}
+async function cargar(){DB=null;let viejo=false;
+ try{const r=localStorage.getItem(KEY);if(r){const o=JSON.parse(r);if(o.e)DB=JSON.parse(await abrirCon(KC,o));else{DB=o;viejo=true}}}catch(e){DB=null}
+ if(!DB&&typeof SEMILLA!=="undefined")try{DB=JSON.parse(await abrirCon(KC,SEMILLA));viejo=true}catch(e){}
  if(!DB)DB={nombre:"José",mov:[],fijos:[],pres:{},pagos:{},mpIgn:{},deudas:[]};
- cargarDefaults()}
-function guardar(){try{localStorage.setItem(KEY,JSON.stringify(DB))}catch(e){toast("⚠ No se pudo guardar")}}
-cargar();
+ cargarDefaults();if(viejo)guardar()}
+let GQ=Promise.resolve();
+function guardar(){const t=JSON.stringify(DB);GQ=GQ.then(async()=>{try{localStorage.setItem(KEY,JSON.stringify({e:1,...await cifrar(KC,t)}))}catch(e){toast("⚠ No se pudo guardar")}})}
 const nid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,6);
 
 /* ===== Formato ===== */
@@ -460,9 +490,10 @@ V.ajustes=()=>`
   <button class="btn sec full" id="gymb">🔄 Actualizar con lo del gym</button><div class="sm mut" style="margin-top:8px">${DB.gymAct?"Última vez: "+fCorta(DB.gymAct.slice(0,10))+" "+DB.gymAct.slice(11,16):"Todavía no se trajo."}</div></div>
  <div class="card"><h2 style="margin-bottom:4px">Importar desde Excel</h2><p class="mut sm" style="margin-top:0">Si tenés tus gastos en un Excel (con columnas de fecha, detalle y monto), los cargo de una.</p>
   <input type="file" id="xls" accept=".xlsx,.xls,.csv" class="hide"><button class="btn sec full" id="xlsb">📄 Elegir Excel</button></div>
- <div class="card"><h2 style="margin-bottom:4px">Copia de seguridad</h2><p class="mut sm" style="margin-top:0">Tus datos se guardan en este dispositivo. Guardá una copia de vez en cuando (por ejemplo, mandátela por WhatsApp o mail).</p>
+ <div class="card"><h2 style="margin-bottom:4px">Copia de seguridad</h2><p class="mut sm" style="margin-top:0">Tus datos se guardan en este dispositivo. La copia sale sin cifrar: guardala en un lugar seguro. Guardá una copia de vez en cuando (por ejemplo, mandátela por WhatsApp o mail).</p>
   <div class="grid g2"><button class="btn" id="bk">💾 Guardar copia</button><button class="btn sec" id="rsb">📂 Recuperar copia</button></div><input type="file" id="rs" accept=".json,application/json" class="hide">
   <div class="sm mut" style="margin-top:10px">${DB.mov.length} movimientos · ${DB.fijos.length} gastos fijos · ${DB.deudas.length} sin pagar</div></div>
+ <div class="card"><h2 style="margin-bottom:4px">🔒 Contraseña</h2><p class="mut sm" style="margin-top:0">Tus datos se guardan cifrados con tu contraseña. Si cerrás sesión, la vuelve a pedir al entrar.</p><button class="btn sec full" id="salir">Cerrar sesión</button></div>
  <div class="card"><button class="btn sec full" id="borrar" style="color:var(--out)">Borrar todo</button></div>`;
 
 /* ----- Más (celular) ----- */
@@ -585,12 +616,20 @@ function bind(){
   g("bk").onclick=()=>{const a=document.createElement("a");a.href=URL.createObjectURL(new Blob([JSON.stringify(DB)],{type:"application/json"}));a.download="mis-cuentas-"+hoyS()+".json";a.click();toast("✓ Copia descargada")};
   g("rsb").onclick=()=>g("rs").click();g("rs").onchange=async e=>{const f=e.target.files[0];if(!f)return;try{const d=JSON.parse(await f.text());if(!Array.isArray(d.mov))throw 0;
    if(!confirm("Esto reemplaza lo que hay ahora por la copia ("+d.mov.length+" movimientos). ¿Seguro?"))return;DB=d;cargarDefaults();guardar();render();toast("✓ Copia recuperada")}catch(x){toast("Ese archivo no es una copia válida")}};
-  g("borrar").onclick=()=>{if(!confirm("¿Borrar TODOS tus datos de este dispositivo? Guardá una copia antes."))return;if(!confirm("¿Seguro seguro?"))return;localStorage.removeItem(KEY);cargar();render();toast("Borrado")}}
+  g("borrar").onclick=()=>{if(!confirm("¿Borrar TODOS tus datos de este dispositivo? Guardá una copia antes."))return;if(!confirm("¿Seguro seguro?"))return;localStorage.removeItem(KEY);cargar().then(()=>{render();toast("Borrado")})}
+  g("salir").onclick=()=>{try{localStorage.removeItem("jose_k")}catch(e){}location.reload()}}
 }
 function cargarDefaults(){["mov","fijos","deudas"].forEach(k=>DB[k]=DB[k]||[]);["pres","pagos","mpIgn"].forEach(k=>DB[k]=DB[k]||{})}
-render();
-gymTraer(false);
-document.addEventListener("visibilitychange",()=>{if(!document.hidden)gymTraer(false)});
+async function entrar(k){try{if(await abrirCon(k,CLAVE)!=="ok")throw 0}catch(e){return false}
+ KC=k;await cargar();document.getElementById("login").remove();document.getElementById("app").hidden=false;document.getElementById("mbar").hidden=false;
+ render();gymTraer(false);document.addEventListener("visibilitychange",()=>{if(!document.hidden)gymTraer(false)});return true}
+document.getElementById("lf").onsubmit=async e=>{e.preventDefault();const b=document.getElementById("lbtn"),er=document.getElementById("lerr");b.disabled=true;b.textContent="Abriendo…";er.textContent="";
+ const k=await derivar(document.getElementById("pw").value),rec=document.getElementById("rec").checked;
+ if(await entrar(k)){if(rec)try{localStorage.setItem("jose_k",b64(await crypto.subtle.exportKey("raw",k)))}catch(x){}}
+ else{er.textContent="Contraseña incorrecta.";b.disabled=false;b.textContent="Entrar";document.getElementById("pw").select()}};
+(async()=>{let r=null;try{r=localStorage.getItem("jose_k")}catch(e){}
+ if(r){try{const k=await crypto.subtle.importKey("raw",u8(r),"AES-GCM",true,["encrypt","decrypt"]);if(await entrar(k))return}catch(e){}try{localStorage.removeItem("jose_k")}catch(e){}}
+ document.getElementById("pw").focus()})();
 </script>
 </body>
 </html>

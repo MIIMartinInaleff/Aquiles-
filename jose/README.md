@@ -4,7 +4,8 @@ Plataforma aparte del gym, para los gastos personales de José. **Todavía no pu
 
 - Archivo único: `jose/index.html` (no usa `src/build.py`). Se vería en `aquiles-gym.vercel.app/jose/`.
 - Estética "panel oscuro", inspirada en tableros de métricas como Escalafy (sin copiar su marca): fondo casi negro, acento violeta `#8B5CF6`, letra Geist grande, menú lateral en PC y barra abajo en celular. Inicio con tarjetas (valor + variación contra el mes anterior + minigráfico de 6 meses) y panel "Desglose" (entró → categorías → me quedó). Verde = entró (`#16A47F`), naranja = gasté (`#E5603A`), validados para daltonismo sobre fondo oscuro.
-- **Datos:** solo en el dispositivo (`localStorage`, clave `jose_v1`). Copia de seguridad: Ajustes → Guardar / Recuperar copia (archivo `.json`, nunca al repo).
+- **Contraseña:** pantalla de entrada. La contraseña **no está en el repo**: `CLAVE` (en `index.html`) es el texto "ok" cifrado con ella (PBKDF2-SHA256 310k → AES-GCM). Para cambiarla: `JOSE_PW='<nueva>' node jose/clave.js` y reemplazar la línea `const CLAVE=...`. Con `node jose/clave.js datos.json` además sale `SEMILLA` (datos cifrados para una vista previa; nunca al repo). "No pedirla de nuevo" guarda la clave derivada en `localStorage.jose_k`; Ajustes → Cerrar sesión la borra.
+- **Datos:** solo en el dispositivo (`localStorage`, clave `jose_v1`), **cifrados** con la clave (`{e:1,n,c}`); si encuentra datos viejos sin cifrar, los cifra al entrar. Copia de seguridad: Ajustes → Guardar / Recuperar copia (archivo `.json`, nunca al repo).
   - `mov`: `{id, t:"g"|"i", f:"YYYY-MM-DD", m, cat, det, medio, fijo?, mp?}`
   - `fijos`: `{id, nom, cat, m, dia, hasta?:"YYYY-MM" (última cuota), nota?}` · `pagos[mes][idFijo] = idMov` · `pres[cat]` = tope mensual · `mpIgn[idPagoMP]`
   - `deudas`: `{id, nom, cat, m, nota}` = cosas sin pagar ("Ya lo pagué" las pasa a gasto de hoy).
