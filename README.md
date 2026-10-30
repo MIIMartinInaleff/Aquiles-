@@ -120,7 +120,7 @@ PK `(col, id)`. RLS: solo `authenticated`. Está en la publicación de realtime.
 4. **Cobrar:** cuotas, productos (con "Producto nuevo"), método de pago, pase gratis, fecha de pago, vencimiento.
 5. **Transferencias:** Mercado Pago en vivo + estadísticas.
 6. **Avisos:** Excel para WhatsApp con el formato "PARA ENVIAR" (vencen en 5 días o menos; vencidos hasta 30 días). Cada Excel descargado anota a esos socios en el historial `AVI` (colección `avi`: `{id, f, tipo:"por"|"ven", n, venc}`); abajo se ve "Ya avisados" de los últimos 30 días con si ya pagó. Los ya avisados para el mismo vencimiento vienen destildados y con la etiqueta "Ya avisado dd/mm".
-7. **Facturación:** total, efectivo/transferencia, AOV, cobrado por día con tooltips, cuotas vs productos, últimos 190 cobros con "Corregir".
+7. **Facturación:** total, efectivo/transferencia, AOV estilo e-commerce (todo lo cobrado ÷ cuotas cobradas: los productos suman como upsell; se muestra "cuota sola" + "upsell"), socios que compraron productos y lo más vendido, cobrado por día con tooltips, cuotas vs productos, últimos 190 cobros con "Corregir".
 8. **Gastos:** punto de equilibrio, por categoría (luz/gas/agua agrupados), mes a mes, montos editables. Sin alquiler.
 9. **Ajustes:** precios de cuotas y productos.
 

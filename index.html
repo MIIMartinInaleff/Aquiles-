@@ -760,6 +760,9 @@ function periodo(){const T=TODAY(),p=STATE.per;
 V.fact=()=>{const{a,b,l}=periodo(),mv=COB.filter(c=>c.f>=a&&c.f<=b),pagos=mv.filter(c=>c.ef+c.tr>0);
  const tot=pagos.reduce((x,c)=>x+c.ef+c.tr,0),ef=pagos.reduce((x,c)=>x+c.ef,0),tr=tot-ef,gratis=mv.filter(c=>c.items.some(i=>i.cat==="gratis")).length;
  const its=mv.flatMap(c=>c.items),cuoT=its.filter(i=>i.cat==="cuota").reduce((x,i)=>x+i.p,0),cuoN=its.filter(i=>i.cat==="cuota").length,prodT=its.filter(i=>i.cat==="prod").reduce((x,i)=>x+i.p,0);
+ // AOV estilo e-commerce: todo lo cobrado (cuotas + productos) dividido las cuotas cobradas; los productos suben el ticket (upsell)
+ const aov=cuoN?tot/cuoN:0,ups=cuoN?(tot-cuoT)/cuoN:0,socC=new Set(mv.filter(c=>c.n&&c.items.some(i=>i.cat==="cuota")).map(c=>c.n)),socP=new Set(mv.filter(c=>c.n&&c.items.some(i=>i.cat==="prod")).map(c=>c.n));
+ const topP=Object.entries(its.filter(i=>i.cat==="prod").reduce((o,i)=>{const k=i.n.replace(/ \(.*\)$/,"");o[k]=(o[k]||0)+1;return o},{})).sort((a,b)=>b[1]-a[1]);
  const nd=diffD(b,a)+1,days=[...Array(nd)].map((_,i)=>{const d=addD(a,i),ms=pagos.filter(c=>c.f.getTime()===d.getTime());return{d,t:ms.reduce((x,c)=>x+c.ef+c.tr,0),e:ms.reduce((x,c)=>x+c.ef,0),c:ms.length}});
  const prom=tot/Math.max(1,days.filter(d=>d.d<=TODAY()).length);
  const max=Math.max(1,...days.map(d=>d.t)),T=TODAY(),mo=[0,1,2,3].map(o=>new Date(T.getFullYear(),T.getMonth()-o,1));
@@ -769,7 +772,7 @@ V.fact=()=>{const{a,b,l}=periodo(),mv=COB.filter(c=>c.f>=a&&c.f<=b),pagos=mv.fil
  <div class="strip" style="--n:4"><div class="kpi hot"><small>Total cobrado</small><b>${ars(tot)}</b><em>${pagos.length} cobros</em></div>
  <div class="kpi"><small>Efectivo</small><b>${ars(ef)}</b><em>${tot?Math.round(ef/tot*100):0}% del total</em></div>
  <div class="kpi"><small>Transferencia</small><b>${ars(tr)}</b><em>${tot?Math.round(tr/tot*100):0}% del total</em></div>
- <div class="kpi"><small>AOV · ticket promedio</small><b>${pagos.length?ars(tot/pagos.length):"—"}</b><em>${cuoN?"Solo cuotas: "+ars(cuoT/cuoN):"&nbsp;"}</em></div></div>
+ <div class="kpi" ${tipAttr(`<b>AOV · ticket por socio</b><div>Todo lo cobrado (cuotas + productos) dividido la cantidad de cuotas cobradas.</div><div class="tip-row"><span>Cuota sola</span><span>${ars(cuoN?cuoT/cuoN:0)}</span></div><div class="tip-row"><span>Upsell (productos)</span><span>+${ars(ups)}</span></div>`)}><small>AOV · ticket por socio</small><b>${cuoN?ars(aov):"—"}</b><em>${cuoN?`Cuota ${ars(cuoT/cuoN)} · upsell +${ars(ups)}`:"&nbsp;"}</em></div></div>
  <div class="grid-c"><section class="box"><div class="h2row"><h2>Cobrado por día</h2><span class="count">Pasá el mouse por las barras</span></div>
   ${tot?`<div class="plot" style="height:200px;gap:${nd>20?3:8}px;margin-top:8px">${days.map(d=>{const today=d.d.getTime()===T.getTime(),top=d.t===max;const tip=`<b>${cap(WD[d.d.getDay()])} ${fmtS(d.d)}${today?" · hoy":""}</b><div class="tip-big">${ars(d.t)}</div><div>${d.c} cobro${d.c===1?"":"s"}${d.c?" · ticket promedio "+ars(d.t/d.c):""}</div><div class="tip-row"><span>Efectivo</span><span>${ars(d.e)}</span></div><div class="tip-row"><span>Transferencia</span><span>${ars(d.t-d.e)}</span></div>${d.t?`<div class="${d.t>=prom?"tip-acc":""}">${d.t>=prom?"▲":"▼"} ${Math.round(Math.abs(d.t/prom-1)*100)}% ${d.t>=prom?"arriba":"abajo"} del promedio diario (${ars(prom)})</div>`:""}${top&&d.t?`<div class="tip-acc">El día que más se cobró</div>`:""}`;return`<div class="col" ${tipAttr(tip)}>${nd<=16&&d.t?`<span style="font-size:12px;font-weight:700;text-align:center;margin-bottom:4px;color:var(--muted)">${Math.round(d.t/1000)}k</span>`:""}<i style="height:${d.t/max*82}%;background:${today||top?"var(--firev,var(--grad))":"var(--bar)"};border-radius:4px 4px 0 0"></i></div>`}).join("")}</div>
   <div style="display:flex;gap:${nd>20?3:8}px;font-size:11px;color:var(--muted);margin-top:6px">${days.map((d,i)=>`<span style="flex:1;text-align:center">${nd<=10||i%5===0||i===nd-1?d.d.getDate():""}</span>`).join("")}</div>
@@ -777,7 +780,9 @@ V.fact=()=>{const{a,b,l}=periodo(),mv=COB.filter(c=>c.f>=a&&c.f<=b),pagos=mv.fil
  <section class="box"><h2 style="margin-bottom:6px">De dónde viene la plata</h2>
   <div class="mix"><i style="width:${tot?cuoT/tot*100:0}%;background:var(--bar)"></i><i style="width:${tot?prodT/tot*100:0}%;background:var(--fire,var(--grad))"></i></div>
   <div class="line"><span><b>Cuotas</b> · ${cuoN}</span><span class="money">${ars(cuoT)}</span></div>
-  <div class="line"><span><b>Productos</b></span><span class="money">${ars(prodT)}</span></div>
+  <div class="line"><span><b>Productos · upsell</b></span><span class="money">${ars(prodT)}</span></div>
+  <div class="line"><span>Socios que compraron algo</span><span>${socP.size} de ${socC.size}${socC.size?` · ${Math.round(socP.size/socC.size*100)}%`:""}</span></div>
+  ${topP.length?`<div class="line"><span>Lo más vendido</span><span>${topP.slice(0,3).map(([n,q])=>`${esc(n)} × ${q}`).join(" · ")}</span></div>`:""}
   <div class="line"><span>Pases gratis</span><span>${gratis}</span></div></section></div>
  <div class="h2row" style="margin-top:28px"><h2>Últimos 190 cobros</h2><span class="count">En el orden en que se cargaron, el último arriba</span></div>
  <div class="tbl tall"><table><thead><tr><th>Fecha</th><th>Hora</th><th>N°</th><th>Socio</th><th>Concepto</th><th>Método</th><th class="r">Total</th><th></th></tr></thead><tbody>
