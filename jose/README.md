@@ -10,7 +10,13 @@ Plataforma aparte del gym, para los gastos personales de José. **Todavía no pu
   - `deudas`: `{id, nom, cat, m, nota}` = cosas sin pagar ("Ya lo pagué" las pasa a gasto de hoy).
   - Los gastos que vienen del Excel llevan `xls:1` (no tienen día real: no cuentan para "el día que más gastás").
 - **Secciones:** Inicio (entró / gasté / me quedó, avisos de vencimientos y topes, proyección a fin de mes), Movimientos, Métricas (6 meses, por categoría, medio de pago, gastos hormiga, día que más gasta, subas), Gastos fijos (tildar = se anota el gasto), Calculadora (cuotas vs contado con inflación, común, cuánto sale al año, descuentos, nafta), Mercado Pago, Ajustes (nombre, topes, importar Excel, copia).
-- **Lo que entra = lo del gym:** "Entró" se llena solo sumando los cobros del gym (colección `cob`: `ef + tr`, por mes de `f`), lo mismo que Facturación. Usa la sesión de Supabase del sistema del gym guardada en el navegador (mismo dominio) y **solo lee**. Se guarda en `DB.gym[mes]` (+ `DB.gymAct`). Si ese mes hay un ingreso manual con categoría "Gimnasio", se usa el manual (no se suma dos veces). Se actualiza al abrir y al volver a la pestaña, o desde Ajustes. Abierta como archivo (`file:`) no trae nada.
+- **El gym (solo lectura):** se trae del sistema del gym con la sesión de Supabase guardada en el navegador (mismo dominio). Nunca escribe.
+  - **Facturación del gym** = cobros (`cob`: `ef + tr`, por mes de `f`) → `DB.gym[mes]`.
+  - **Gastos del gym** = filas `gas` (clave `AAAA-M`, mes desde 0). Si un mes no tiene filas, se usa la plantilla `cfg/gtpl`, igual que muestra el gym; si hay montos de ejemplo se marcan "estimados" → `DB.gymG[mes] = {g, est}`.
+  - **Ganancia del gym** = facturación − gastos del gym = lo que le entra a José ("Entró"). Si un mes hay un ingreso manual "Gimnasio", se usa ese.
+  - Inicio: tarjetas Facturación del gym / Ganancia del gym / Gasté / Me quedó; el Desglose arranca en la facturación. Métricas: tabla "El gym mes a mes".
+  - Se actualiza al abrir, al volver a la pestaña o desde Ajustes. Abierta como archivo (`file:`) no trae nada.
+- **Separación:** los gastos propios del gym (EMEC) van en el sistema del gym, no en Mis Cuentas.
 - **Mercado Pago:** usa el mismo `/api/mp` del gym con la sesión de Supabase guardada en el navegador (mismo dominio). Muestra los pagos que salieron (`dir: out`) para anotarlos o descartarlos ("No" = no es gasto personal).
 - **Importar Excel:** busca columnas fecha / detalle / monto en las primeras 15 filas y adivina la categoría por palabras (`adivinarCat`).
 
