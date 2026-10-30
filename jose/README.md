@@ -3,7 +3,7 @@
 Plataforma aparte del gym, para los gastos personales de José. **Todavía no publicada** (no hacer push a `main` hasta que el usuario lo pida).
 
 - Archivo único: `jose/index.html` (no usa `src/build.py`). Se vería en `aquiles-gym.vercel.app/jose/`.
-- Estética "papel": fondo crema, verde petróleo, letra grande (Figtree; títulos Fraunces). Verde = entró (`#1A9C7E`), terracota = gasté (`#C2410C`), validados para daltonismo.
+- Estética "panel oscuro", inspirada en tableros de métricas como Escalafy (sin copiar su marca): fondo casi negro, acento violeta `#8B5CF6`, letra Geist grande, menú lateral en PC y barra abajo en celular. Inicio con tarjetas (valor + variación contra el mes anterior + minigráfico de 6 meses) y panel "Desglose" (entró → categorías → me quedó). Verde = entró (`#16A47F`), naranja = gasté (`#E5603A`), validados para daltonismo sobre fondo oscuro.
 - **Datos:** solo en el dispositivo (`localStorage`, clave `jose_v1`). Copia de seguridad: Ajustes → Guardar / Recuperar copia (archivo `.json`, nunca al repo).
   - `mov`: `{id, t:"g"|"i", f:"YYYY-MM-DD", m, cat, det, medio, fijo?, mp?}`
   - `fijos`: `{id, nom, cat, m, dia, hasta?:"YYYY-MM" (última cuota), nota?}` · `pagos[mes][idFijo] = idMov` · `pres[cat]` = tope mensual · `mpIgn[idPagoMP]`
