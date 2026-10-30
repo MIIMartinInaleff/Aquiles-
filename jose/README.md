@@ -21,6 +21,7 @@ Plataforma aparte del gym, para los gastos personales de José. **Todavía no pu
 - Correcciones de tipeo aplicadas: Sura marzo `4613414` → $46.134,14; cuota depto julio `1265.107` → $1.265.107. Plan Jeep de abril estaba como texto (el total del Excel no lo sumaba).
 
 ## Pendientes
-- Respuestas de José: si además del gym entra algo más (sueldo, jubilación), qué es M. de la Costa, Las Golondrinas, SCPL y EMEC, transferencia a hijos de sept ($117.030), si lo rojo viejo (SCPL enero, EMEC gym mayo, abogada y service Jeep junio) se pagó, univ. Valen después de julio, cuota depto de octubre.
+- Respuestas de José (30/10): SCPL = Sociedad Cooperativa Popular Limitada (servicios); EMEC = seguro de emergencias del gym (por si un socio se lastima); Mercado de la Costa = comida e insumos del mes; la transferencia a los hijos son sus sueldos (categoría "Sueldos (hijos)"); Valen sigue en la universidad (fijo).
+- Falta saber: qué es Las Golondrinas, si los $117.030 de sueldos de septiembre están bien, si lo rojo viejo ya se pagó y si la cuota del depto de octubre se pagó.
 - Sincronizar entre celular y PC (Supabase, cifrado) y PIN de entrada.
 - Mercado Pago propio sin depender de la sesión del gym.
