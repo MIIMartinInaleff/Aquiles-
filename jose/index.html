@@ -303,7 +303,7 @@ V.inicio=()=>{
 
  </div>
  <div class="layout"><div>
- ${!t.i&&t.g?`<div class="aviso"><span class="e">🏋️</span><div><b>Falta lo del gym</b><div class="sm">${location.protocol==="file:"?"Se completa solo cuando la plataforma esté publicada (lee la Facturación del sistema del gym).":GYM.estado==="cargando"?"Trayendo lo cobrado en el gym…":"Para traerlo solo, entrá una vez al sistema del gym en esta compu o celu. O cargalo a mano."}</div></div><button class="btn sm green" data-nuevo="i" style="margin-left:auto">Cargar a mano</button></div>`:""}
+ ${conectarGym()}
  ${avisos.join("")}
  ${t.i?`<div class="card"><div style="display:flex;justify-content:space-between;margin-bottom:8px"><b>De cada $100 que entraron, gasté $${Math.min(999,pct(t.g,t.i))}</b></div><div class="bar"><i style="width:${Math.min(100,pct(t.g,t.i))}%;background:${t.g>t.i?"var(--out)":t.g>t.i*.85?"var(--warn)":"var(--in)"}"></i></div>${proyec?`<div class="sm mut" style="margin-top:8px">A este ritmo, a fin de mes vas a gastar unos <b>${ars(proyec)}</b>.</div>`:""}</div>`:""}
  <div class="grid g2">
@@ -494,9 +494,18 @@ async function sesionGym(){if(!window.supabase)await cargarJS("../lib/supabase.m
  SBC=SBC||supabase.createClient("https://xbujsjsavlvsriiwqajv.supabase.co","sb_publishable_dtF1D0BitTNQYNRWXEBh4Q__ENTmpzQ");
  const{data}=await SBC.auth.getSession();return data&&data.session?data.session.access_token:null}
 /* Trae los cobros del gym (colección "cob": efectivo + transferencia) y los suma por mes. Solo lee. */
-let GYM={estado:""};
+let GYM={estado:"",err:""};
+/* Tarjeta para conectar con el gym desde acá mismo (misma cuenta y contraseña que el sistema del gym). */
+function conectarGym(){if(GYM.estado==="ok"||GYM.estado==="cargando"&&!GYM.err)return GYM.estado==="cargando"?`<div class="aviso"><span class="e">🏋️</span><div><b>Trayendo la facturación del gym…</b></div></div>`:"";
+ if(location.protocol==="file:")return`<div class="aviso"><span class="e">🏋️</span><div><b>Facturación y ganancia del gym</b><div class="sm">Se ven en la versión publicada (aquiles-gym.vercel.app/jose).</div></div></div>`;
+ return`<div class="card" style="border-color:var(--sol)"><h2 style="margin-bottom:4px">🏋️ Conectar con el gym</h2><p class="sm mut" style="margin:0 0 12px">Para ver la <b>facturación y la ganancia del gym</b>, poné la contraseña del sistema del gym. Se hace una sola vez en este dispositivo y solo se leen los números (no se cambia nada del gym).</p>
+ ${GYM.err?`<div class="sm out" style="margin-bottom:10px">${esc(GYM.err)}</div>`:""}
+ <form id="gymf" style="display:flex;gap:10px;flex-wrap:wrap"><input class="input" id="gympw" type="password" autocomplete="off" placeholder="Contraseña del gym" style="flex:1 1 220px"><button class="btn sol" type="submit" id="gymok">Conectar</button></form></div>`}
+async function gymConectar(pw){GYM={estado:"cargando",err:""};
+ try{await sesionGym();const r=await SBC.auth.signInWithPassword({email:"martininaleff011@gmail.com",password:pw});if(r.error)throw r.error;await gymTraer(true)}
+ catch(x){GYM={estado:"error",err:/invalid/i.test(String(x&&x.message))?"Contraseña del gym incorrecta.":"No se pudo conectar: "+((x&&x.message)||x)};render(true)}}
 async function gymTraer(aviso){if(location.protocol==="file:")return;GYM.estado="cargando";
- try{if(!(await sesionGym())){GYM.estado="sin";if(aviso)render(true);return}
+ try{if(!(await sesionGym())){GYM.estado="sin";render(true);return}
   const filas=async col=>{let L=[];for(let i=0;;i+=1000){const q=await SBC.from("registros").select("id,data").eq("col",col).range(i,i+999);if(q.error)throw q.error;L=L.concat(q.data);if(q.data.length<1000)break}return L};
   const por={};(await filas("cob")).forEach(r=>{const c=r.data||{},f=String(c.f||"").slice(0,7),v=(+c.ef||0)+(+c.tr||0);if(f&&v)por[f]=(por[f]||0)+v});
   // gastos del gym: los guardados por mes (clave "AAAA-M", mes desde 0); si un mes no tiene, se usa la plantilla (igual que muestra el gym)
@@ -504,8 +513,8 @@ async function gymTraer(aviso){if(location.protocol==="file:")return;GYM.estado=
   (await filas("gas")).forEach(r=>{const g=r.data||{},k=String(g.mes||r.id.split("|")[0]).split("-");if(k.length<2)return;const m=k[0]+"-"+p2(+k[1]+1);
    const x=gm[m]=gm[m]||{g:0,est:false};x.g+=+g.monto||0;if(g.ej)x.est=true});
   if(tpl)Object.keys(por).forEach(m=>{if(!gm[m])gm[m]={g:tpl.reduce((a,t)=>a+(t.sub?t.sub.reduce((x,y)=>x+(+y[1]||0),0):+t.monto||0),0),est:tpl.some(t=>!t.real)}});
-  const cambio=JSON.stringify([por,gm])!==JSON.stringify([DB.gym||{},DB.gymG||{}]);DB.gym=por;DB.gymG=gm;DB.gymAct=new Date().toISOString();guardar();GYM.estado="ok";if(cambio||aviso)render(true);if(aviso)toast("✓ Actualizado con lo del gym")}
- catch(x){console.error(x);GYM.estado="error";if(aviso)toast("No se pudo traer lo del gym")}}
+  const cambio=JSON.stringify([por,gm])!==JSON.stringify([DB.gym||{},DB.gymG||{}]);DB.gym=por;DB.gymG=gm;DB.gymAct=new Date().toISOString();guardar();GYM.estado="ok";GYM.err="";if(cambio||aviso)render(true);if(aviso)toast("✓ Actualizado con lo del gym")}
+ catch(x){console.error(x);GYM.estado="error";GYM.err="No se pudo traer lo del gym: "+((x&&x.message)||x);render(true)}}
 function cargarJS(src){return new Promise((ok,no)=>{const s=document.createElement("script");s.src=src;s.onload=ok;s.onerror=()=>no(new Error("No se pudo cargar "+src));document.head.appendChild(s)})}
 
 /* ----- Ajustes ----- */
@@ -514,7 +523,7 @@ V.ajustes=()=>`
  <div class="card"><h2 style="margin-bottom:4px">Topes por mes</h2><p class="mut sm" style="margin-top:0">Poné cuánto querés gastar como máximo en cada cosa. Te aviso cuando te acercás.</p>
   ${CATS_G.map(([k,e,n])=>`<div class="row"><div class="ic">${e}</div><div class="tx"><b>${n}</b></div><input class="input" style="max-width:170px;text-align:right" data-pres="${k}" inputmode="numeric" placeholder="Sin tope" value="${DB.pres[k]?ars(DB.pres[k]):""}"></div>`).join("")}</div>
  <div class="card"><h2 style="margin-bottom:4px">🏋️ El gym</h2><p class="mut sm" style="margin-top:0">Se trae solo del sistema del gym (solo se lee, no se cambia nada allá): la facturación y los gastos del gym. La ganancia del gym es lo que te entra a vos. Si un mes cargás a mano un ingreso "Gimnasio", se usa ese.</p>
-  <button class="btn sec full" id="gymb">🔄 Actualizar con lo del gym</button><div class="sm mut" style="margin-top:8px">${DB.gymAct?"Última vez: "+fCorta(DB.gymAct.slice(0,10))+" "+DB.gymAct.slice(11,16):"Todavía no se trajo."}</div></div>
+  ${GYM.estado==="ok"?`<button class="btn sec full" id="gymb">🔄 Actualizar con lo del gym</button>`:conectarGym()}<div class="sm mut" style="margin-top:8px">${DB.gymAct?"Última vez: "+fCorta(DB.gymAct.slice(0,10))+" "+DB.gymAct.slice(11,16):"Todavía no se trajo."}</div></div>
  <div class="card"><h2 style="margin-bottom:4px">⬇️ Descargar en Excel</h2><p class="mut sm" style="margin-top:0">Todo en una planilla: resumen por mes, movimientos, gastos fijos, lo que falta pagar y las facturas.</p><button class="btn full" data-excel>⬇️ Descargar Excel</button></div>
  <div class="card"><h2 style="margin-bottom:4px">Importar desde Excel</h2><p class="mut sm" style="margin-top:0">Si tenés tus gastos en un Excel (con columnas de fecha, detalle y monto), los cargo de una.</p>
   <input type="file" id="xls" accept=".xlsx,.xls,.csv" class="hide"><button class="btn sec full" id="xlsb">📄 Elegir Excel</button></div>
@@ -652,7 +661,9 @@ function bind(){
   g("mok").onclick=()=>{const M=DB.mono;M.cat=g("mcat").value.trim();M.tope=num(g("mtope").value);M.cuota=num(g("mcuota").value);M.dia=Math.min(31,parseInt(g("mdia").value)||20);
    if(M.cuota){let f=DB.fijos.find(x=>x.mono);if(!f){f={id:nid(),mono:1};DB.fijos.push(f)}Object.assign(f,{nom:"Monotributo",cat:"impuestos",m:M.cuota,dia:M.dia})}
    guardar();render(true);toast(M.cuota?"✓ Guardado (la cuota quedó en gastos fijos)":"✓ Guardado")}}
- if(sec==="ajustes"){g("gymb").onclick=()=>{if(location.protocol==="file:")return toast("Funciona cuando esté publicada");gymTraer(true).then(()=>{if(GYM.estado==="sin")toast("Entrá una vez al sistema del gym en este dispositivo")})};g("anom").onchange=e=>{DB.nombre=e.target.value.trim()||"José";guardar();render(true)};
+ {const f=g("gymf");if(f)f.onsubmit=e=>{e.preventDefault();const v=g("gympw").value;if(!v)return;g("gymok").disabled=true;g("gymok").textContent="Conectando…";gymConectar(v)}}
+ if(sec==="ajustes"&&g("gymb"))g("gymb").onclick=()=>{if(location.protocol==="file:")return toast("Funciona cuando esté publicada");gymTraer(true).then(()=>{if(GYM.estado==="sin")toast("Entrá una vez al sistema del gym en este dispositivo")})};
+ if(sec==="ajustes"){g("anom").onchange=e=>{DB.nombre=e.target.value.trim()||"José";guardar();render(true)};
   $("[data-pres]").forEach(i=>{i.oninput=()=>{const v=num(i.value);i.value=v?ars(v):""};i.onchange=()=>{const v=num(i.value);if(v)DB.pres[i.dataset.pres]=v;else delete DB.pres[i.dataset.pres];guardar();toast("✓ Tope guardado")}});
   g("xlsb").onclick=()=>g("xls").click();g("xls").onchange=e=>{const f=e.target.files[0];if(f)importarExcel(f);e.target.value=""};
   g("bk").onclick=()=>{const a=document.createElement("a");a.href=URL.createObjectURL(new Blob([JSON.stringify(DB)],{type:"application/json"}));a.download="mis-cuentas-"+hoyS()+".json";a.click();toast("✓ Copia descargada")};
@@ -664,7 +675,7 @@ function bind(){
 function cargarDefaults(){["mov","fijos","deudas","facturas"].forEach(k=>DB[k]=DB[k]||[]);["pres","pagos","mpIgn","mono"].forEach(k=>DB[k]=DB[k]||{})}
 async function entrar(k){try{if(await abrirCon(k,CLAVE)!=="ok")throw 0}catch(e){return false}
  KC=k;await cargar();document.getElementById("login").remove();document.getElementById("app").hidden=false;document.getElementById("mbar").hidden=false;
- render();gymTraer(false);document.addEventListener("visibilitychange",()=>{if(!document.hidden)gymTraer(false)});return true}
+ gymTraer(false);render();document.addEventListener("visibilitychange",()=>{if(!document.hidden)gymTraer(false)});return true}
 document.getElementById("lf").onsubmit=async e=>{e.preventDefault();const b=document.getElementById("lbtn"),er=document.getElementById("lerr");b.disabled=true;b.textContent="Abriendo…";er.textContent="";
  const k=await derivar(document.getElementById("pw").value),rec=document.getElementById("rec").checked;
  if(await entrar(k)){if(rec)try{localStorage.setItem("jose_k",b64(await crypto.subtle.exportKey("raw",k)))}catch(x){}}

@@ -16,6 +16,7 @@ Plataforma aparte del gym, para los gastos personales de José. Publicada en htt
   - **Gastos del gym** = filas `gas` (clave `AAAA-M`, mes desde 0). Si un mes no tiene filas, se usa la plantilla `cfg/gtpl`, igual que muestra el gym; si hay montos de ejemplo se marcan "estimados" → `DB.gymG[mes] = {g, est}`.
   - **Ganancia del gym** = facturación − gastos del gym = lo que le entra a José ("Entró"). Si un mes hay un ingreso manual "Gimnasio", se usa ese.
   - Inicio: tarjetas Facturación del gym / Ganancia del gym / Gasté / Me quedó; el Desglose arranca en la facturación. Métricas: tabla "El gym mes a mes".
+  - Si en ese navegador no hay sesión del gym, Inicio (y Ajustes) muestran "Conectar con el gym": se pone la contraseña del sistema del gym y se inicia sesión con la misma cuenta (`signInWithPassword`, solo lectura de datos).
   - Se actualiza al abrir, al volver a la pestaña o desde Ajustes. Abierta como archivo (`file:`) no trae nada.
 - **Separación:** los gastos propios del gym (EMEC) van en el sistema del gym, no en Mis Cuentas.
 - **Facturar en ARCA (ex AFIP):** sección para anotar las facturas del mes (`DB.facturas`: `{id, f, m, num, a}`), compararlas con lo que cobró el gym ("falta facturar"), paso a paso para Comprobantes en línea, botón a ARCA y control del tope anual del monotributo (`DB.mono`: `{cat, tope, cuota, dia}`; la cuota se agrega sola a gastos fijos). Desde el día 15, si no hay facturas en el mes, Inicio avisa.
