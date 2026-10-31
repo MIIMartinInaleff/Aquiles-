@@ -81,6 +81,7 @@ PK `(col, id)`. RLS: solo `authenticated`. Está en la publicación de realtime.
 - `render(keep)` dibuja la sección actual (`cur`) y llama `bind()`, que engancha los eventos por sección (`if(cur==="socios"){...}`).
 - `ficha(n)` = modal con los datos del socio. `modal()`, `close()`, `toast()`.
 - `editar(n)` = "Editar datos" en la ficha (N°, nombre, DNI, teléfono, etc.). Si cambia el N°, `renumerar()` lo cambia en `BYN`, cobros, ingresos, transferencias, avisos y `ALIAS`; la sincronización borra la fila `soc` vieja y crea la nueva.
+- Novedades del socio: `s.nov` = lista de `{id, tipo:"amigo"|"nota", txt, cant, f}` + `s.favor`. Se anotan desde la ficha ("Anotar novedad") o al dar de alta un socio ("¿Lo trajo un socio?" → Plan Amigo para el que lo trajo). En Cobrar aparece un cartel grande (`novCartel()`); Plan Amigo (`amigoUsado()`, `PRECIO_AMIGO` = $40.000) se aplica solo a la cuota y descuenta 1 por cobro; las notas se cierran con "Resuelto". En Check-in sale la etiqueta "📌 Tiene novedad".
 - Saldo a favor: campo `s.favor` del socio; `favorUsado()` lo descuenta de la próxima cuota en Cobrar (botón "No descontar") y se borra al guardar.
 - Menú: `SECS` (lista de secciones), `side()` (menú lateral en PC, barra abajo en celular).
 
@@ -120,7 +121,7 @@ PK `(col, id)`. RLS: solo `authenticated`. Está en la publicación de realtime.
 4. **Cobrar:** cuotas, productos (con "Producto nuevo"), método de pago, pase gratis, fecha de pago, vencimiento.
 5. **Transferencias:** Mercado Pago en vivo + estadísticas.
 6. **Avisos:** Excel para WhatsApp con el formato "PARA ENVIAR" (vencen en 5 días o menos; vencidos hasta 30 días). Cada Excel descargado anota a esos socios en el historial `AVI` (colección `avi`: `{id, f, tipo:"por"|"ven", n, venc}`); abajo se ve "Ya avisados" de los últimos 30 días con si ya pagó. Los ya avisados para el mismo vencimiento vienen destildados y con la etiqueta "Ya avisado dd/mm".
-7. **Facturación:** total, efectivo/transferencia, AOV, cobrado por día con tooltips, cuotas vs productos, últimos 190 cobros con "Corregir".
+7. **Facturación:** total, efectivo/transferencia, AOV estilo e-commerce (todo lo cobrado ÷ cuotas cobradas: los productos suman como upsell; se muestra "cuota sola" + "upsell"), socios que compraron productos y lo más vendido, cobrado por día con tooltips, cuotas vs productos, últimos 190 cobros con "Corregir".
 8. **Gastos:** punto de equilibrio, por categoría (luz/gas/agua agrupados), mes a mes, montos editables. Sin alquiler.
 9. **Ajustes:** precios de cuotas y productos.
 
